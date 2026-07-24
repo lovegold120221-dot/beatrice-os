@@ -423,6 +423,7 @@ export default function App() {
               audioQueueRef.current.push({ data: pcmData, sampleRate });
               if (!isPlayingRef.current) schedulePendingAudio();
             }
+          }
 
           if (message.serverContent?.modelTurn?.parts?.[0]?.text) {
             setLiveTranscription(
