@@ -45,7 +45,13 @@ import {
 import { generateChatResponseStream } from "../services/ollama";
 import { generateImage } from "../services/flux";
 import { tools, executeTool } from "../services/tools";
-import { createAudioWorkletBlobUrl } from "../services/audio-worklet";
+import {
+  getMemories,
+  extractAndStoreMemories,
+  buildMemoryContext,
+  Memory,
+} from "../services/memory";
+import { loadDeviceProfile, saveDeviceProfile } from "../services/profile";
 
 declare global {
   interface Window {
@@ -64,11 +70,6 @@ interface Message {
   isImageGen?: boolean;
   groundingMetadata?: any;
   originalPrompt?: string;
-}
-
-interface AudioChunk {
-  data: Int16Array;
-  sampleRate: number;
 }
 
 type ViewState = "home" | "chat";
@@ -193,6 +194,8 @@ export default function App() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [conversationContext, setConversationContext] = useState("");
+  const [memories, setMemories] = useState<Memory[]>([]);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authConfirmPassword, setAuthConfirmPassword] = useState("");
@@ -216,13 +219,66 @@ export default function App() {
     if (savedResponseStyle) setResponseStyle(savedResponseStyle);
     setTheme(savedTheme);
     if (savedOllamaModel) setOllamaModel(savedOllamaModel);
+
+    loadDeviceProfile().then((profile) => {
+      if (!profile) return;
+      if (profile.user_context) {
+        setUserContext(profile.user_context);
+        localStorage.setItem("eburon_userContext", profile.user_context);
+      }
+      if (profile.response_style) {
+        setResponseStyle(profile.response_style);
+        localStorage.setItem("eburon_responseStyle", profile.response_style);
+      }
+      if (profile.theme) {
+        setTheme(profile.theme as any);
+        localStorage.setItem("eburon_theme", profile.theme);
+      }
+      if (profile.ollama_model) {
+        setOllamaModel(profile.ollama_model);
+        localStorage.setItem("eburon_ollamaModel", profile.ollama_model);
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveDeviceProfile({
+        user_context: userContext,
+        response_style: responseStyle,
+        theme,
+        ollama_model: ollamaModel,
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [userContext, responseStyle, theme, ollamaModel]);
+
+  const getFullUserContext = () => {
+    let context = userContext || "";
+    if (memories && memories.length > 0) {
+      const memoryStr = buildMemoryContext(memories);
+      if (memoryStr.trim()) {
+        context += `\n\n${memoryStr}`;
+      }
+    }
+    if (conversationContext) {
+      const recentLines = conversationContext.split("\n").slice(-30).join("\n");
+      context += `\n\n## Recent Conversation Context (last 30 messages)\nThe following is the conversation history from the current chat session. Use it to maintain continuity and refer back to what was discussed earlier:\n${recentLines}`;
+    }
+    return context.trim();
+  };
 
   const saveSettings = () => {
     localStorage.setItem("eburon_userContext", userContext);
     localStorage.setItem("eburon_responseStyle", responseStyle);
     localStorage.setItem("eburon_theme", theme);
     localStorage.setItem("eburon_ollamaModel", ollamaModel);
+    saveDeviceProfile({
+      user_context: userContext,
+      response_style: responseStyle,
+      theme,
+      ollama_model: ollamaModel,
+    });
     setActiveModal(null);
   };
 
@@ -239,6 +295,12 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      getMemories(user.id).then((m) => setMemories(m));
+    }
+  }, [user]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,15 +348,12 @@ export default function App() {
   const audioChunksRef = useRef<Blob[]>([]);
   const liveSessionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioQueueRef = useRef<AudioChunk[]>([]);
   const isPlayingRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
-  const outputGainRef = useRef<GainNode | null>(null);
-  const nextStartTimeRef = useRef(0);
+  const outputNodeRef = useRef<AudioWorkletNode | null>(null);
 
-  const audioWorkletCode = `
+  const workletBlobCode = `
     class PcmProcessor extends AudioWorkletProcessor {
       constructor() {
         super();
@@ -317,12 +376,48 @@ export default function App() {
       }
     }
     registerProcessor('pcm-processor', PcmProcessor);
+
+    class AudioOutputProcessor extends AudioWorkletProcessor {
+      constructor() {
+        super();
+        this.buffer = new Float32Array(96000);
+        this.writePos = 0;
+        this.readPos = 0;
+        this.port.onmessage = (e) => {
+          if (e.data === 'close') { this.port.close(); return; }
+          if (e.data === 'reset') { this.writePos = 0; this.readPos = 0; return; }
+          const float32 = new Float32Array(e.data);
+          for (let i = 0; i < float32.length; i++) {
+            if (this.writePos - this.readPos >= this.buffer.length) break;
+            this.buffer[this.writePos % this.buffer.length] = float32[i];
+            this.writePos++;
+          }
+        };
+      }
+      process(outputs) {
+        const output = outputs[0];
+        if (output.length > 0) {
+          const channelData = output[0];
+          const available = this.writePos - this.readPos;
+          for (let i = 0; i < channelData.length; i++) {
+            if (this.readPos < this.writePos) {
+              channelData[i] = this.buffer[this.readPos % this.buffer.length];
+              this.readPos++;
+            } else {
+              channelData[i] = 0;
+            }
+          }
+        }
+        return true;
+      }
+    }
+    registerProcessor('audio-output-processor', AudioOutputProcessor);
   `;
 
   const workletBlobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const blob = new Blob([audioWorkletCode], { type: "application/javascript" });
+    const blob = new Blob([workletBlobCode], { type: "application/javascript" });
     workletBlobUrlRef.current = URL.createObjectURL(blob);
     return () => {
       if (workletBlobUrlRef.current) URL.revokeObjectURL(workletBlobUrlRef.current);
@@ -344,6 +439,7 @@ export default function App() {
   const clearChat = () => {
     setMessages([]);
     setCurrentChatId(null);
+    setConversationContext("");
     setView("home");
     setIsHeaderMenuOpen(false);
   };
@@ -374,6 +470,13 @@ export default function App() {
       audioContextRef.current = new AudioContext({ sampleRate: 24000 });
 
       await audioContextRef.current.audioWorklet.addModule(workletBlobUrlRef.current!);
+
+      const outputNode = new AudioWorkletNode(audioContextRef.current, "audio-output-processor");
+      const outputGain = audioContextRef.current.createGain();
+      outputGain.gain.value = 0.8;
+      outputNode.connect(outputGain);
+      outputGain.connect(audioContextRef.current.destination);
+      outputNodeRef.current = outputNode;
 
       const sessionPromise = connectLive(
         async (sessionPromise) => {
@@ -406,10 +509,7 @@ export default function App() {
             const mimeType = inlineData.mimeType || "audio/pcm;rate=24000";
             const base64Audio = inlineData.data;
 
-            const rateMatch = mimeType.match(/rate=(\d+)/);
-            const sampleRate = rateMatch ? parseInt(rateMatch[1]) : 24000;
-
-            if (mimeType.includes("pcm")) {
+            if (mimeType.includes("pcm") && outputNodeRef.current) {
               const binaryString = atob(base64Audio);
               const bytes = new Uint8Array(binaryString.length);
               for (let i = 0; i < binaryString.length; i++) {
@@ -420,8 +520,16 @@ export default function App() {
                 0,
                 Math.floor(bytes.length / 2),
               );
-              audioQueueRef.current.push({ data: pcmData, sampleRate });
-              if (!isPlayingRef.current) schedulePendingAudio();
+              const float32 = new Float32Array(pcmData.length);
+              for (let i = 0; i < pcmData.length; i++) {
+                float32[i] = pcmData[i] / 0x8000;
+              }
+              outputNodeRef.current.port.postMessage(
+                float32.buffer,
+                [float32.buffer],
+              );
+              isPlayingRef.current = true;
+              setIsSpeaking(true);
             }
           }
 
@@ -439,9 +547,11 @@ export default function App() {
           }
 
           if (message.serverContent?.interrupted) {
-            audioQueueRef.current = [];
             isPlayingRef.current = false;
             setIsSpeaking(false);
+            if (outputNodeRef.current) {
+              outputNodeRef.current.port.postMessage("reset");
+            }
           }
         },
         (err) => console.error("Live error:", err),
@@ -449,7 +559,7 @@ export default function App() {
           console.log("Live session closed");
           stopLiveSession();
         },
-        userContext,
+        getFullUserContext(),
         responseStyle,
       );
 
@@ -457,60 +567,6 @@ export default function App() {
     } catch (err) {
       console.error("Failed to start live session:", err);
       setIsVoiceOpen(false);
-    }
-  };
-
-  const schedulePendingAudio = () => {
-    if (!audioContextRef.current || audioQueueRef.current.length === 0) {
-      isPlayingRef.current = false;
-      setIsSpeaking(false);
-      return;
-    }
-
-    if (!outputGainRef.current) {
-      const ctx = audioContextRef.current;
-      const compressor = ctx.createDynamicsCompressor();
-      compressor.threshold.value = -24;
-      compressor.knee.value = 30;
-      compressor.ratio.value = 12;
-      compressor.attack.value = 0.003;
-      compressor.release.value = 0.25;
-
-      const gain = ctx.createGain();
-      gain.gain.value = 0.7;
-
-      compressor.connect(gain);
-      gain.connect(ctx.destination);
-      outputGainRef.current = gain;
-    }
-
-    isPlayingRef.current = true;
-    setIsSpeaking(true);
-
-    const ctx = audioContextRef.current;
-    const now = ctx.currentTime;
-    if (nextStartTimeRef.current < now) {
-      nextStartTimeRef.current = now;
-    }
-
-    while (audioQueueRef.current.length > 0) {
-      const chunk = audioQueueRef.current.shift()!;
-      const pcmData = chunk.data;
-      const sampleRate = chunk.sampleRate;
-
-      const float32Data = new Float32Array(pcmData.length);
-      for (let i = 0; i < pcmData.length; i++) {
-        float32Data[i] = pcmData[i] / 0x8000;
-      }
-
-      const buffer = ctx.createBuffer(1, float32Data.length, sampleRate);
-      buffer.getChannelData(0).set(float32Data);
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(outputGainRef.current);
-      source.start(nextStartTimeRef.current);
-      nextStartTimeRef.current += buffer.duration;
     }
   };
 
@@ -525,29 +581,24 @@ export default function App() {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-if (workletNodeRef.current) {
+    if (workletNodeRef.current) {
       workletNodeRef.current.port.postMessage("close");
       workletNodeRef.current.disconnect();
       workletNodeRef.current = null;
     }
-    if (outputGainRef.current) {
-      outputGainRef.current.disconnect();
-      outputGainRef.current = null;
-    }
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
+    if (outputNodeRef.current) {
+      outputNodeRef.current.port.postMessage("close");
+      outputNodeRef.current.disconnect();
+      outputNodeRef.current = null;
     }
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
-    nextStartTimeRef.current = 0;
     setIsLiveActive(false);
     setIsVoiceOpen(false);
     setIsSpeaking(false);
     setLiveTranscription("");
-    audioQueueRef.current = [];
     isPlayingRef.current = false;
   };
 
@@ -604,6 +655,13 @@ if (workletNodeRef.current) {
     setIsSidebarOpen(false);
     setCurrentChatId(chatId);
 
+    const { data: chatData } = await supabase
+      .from("chats")
+      .select("context_text")
+      .eq("id", chatId)
+      .single();
+    setConversationContext(chatData?.context_text || "");
+
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -627,6 +685,7 @@ if (workletNodeRef.current) {
   const createNewChat = (initialText?: string) => {
     setMessages([]);
     setCurrentChatId(null);
+    setConversationContext("");
     setView("home");
     setIsSidebarOpen(false);
   };
@@ -672,6 +731,7 @@ if (workletNodeRef.current) {
         const { data, error } = await supabase.storage
           .from("chat-images")
           .upload(fileName, blob);
+
         if (!error && data) {
           const { data: publicUrlData } = supabase.storage
             .from("chat-images")
@@ -679,6 +739,26 @@ if (workletNodeRef.current) {
           imageUrl = publicUrlData.publicUrl;
         }
       }
+
+      const roleLabel = msg.role === "user" ? "User" : "Beatrice";
+      const imageSuffix = msg.isImageGen ? ` [Generated Image: ${msg.originalPrompt || ""}]` : "";
+      const contextLine = `${roleLabel}: ${msg.text}${imageSuffix}`;
+
+      const { data: chatData } = await supabase
+        .from("chats")
+        .select("context_text")
+        .eq("id", chatId)
+        .single();
+
+      const prevContext = chatData?.context_text || "";
+      const newContext = prevContext
+        ? `${prevContext}\n${contextLine}`
+        : contextLine;
+
+      await supabase
+        .from("chats")
+        .update({ context_text: newContext })
+        .eq("id", chatId);
 
       await supabase.from("messages").insert({
         chat_id: chatId,
@@ -805,7 +885,7 @@ if (workletNodeRef.current) {
             history,
             isThinking,
             isFastMode,
-            userContext,
+            getFullUserContext(),
             responseStyle,
             [],
             ollamaModel || undefined,
@@ -835,6 +915,16 @@ if (workletNodeRef.current) {
             groundingMetadata,
           };
           saveMessageToDb(finalMessage);
+
+          if (user) {
+            extractAndStoreMemories(
+              user.id,
+              textToSend,
+              fullText,
+            ).then(() => {
+              getMemories(user.id).then(setMemories);
+            });
+          }
         } catch (streamError) {
           console.error("Streaming error:", streamError);
           // Fallback to non-streaming if needed or handle error
