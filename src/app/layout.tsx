@@ -1,9 +1,9 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'EchoVoice',
-  description: 'AI-powered voice and chat assistant',
+  title: "BeatriceVoice",
+  description: "AI-powered voice and chat assistant",
 };
 
 export default function RootLayout({

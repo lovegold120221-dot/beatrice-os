@@ -12,15 +12,15 @@ const OLLAMA_MODEL =
   process.env.OLLAMA_MODEL ||
   "codemax-beta:latest";
 
-export const SYSTEM_PROMPT = `You are Echo, the sophisticated, highly capable, and witty voice assistant for Eburon AI.
+export const SYSTEM_PROMPT = `You are Beatrice, the sophisticated, highly capable, and witty assistant for Eburon AI.
 
 Your personality:
 - You are highly conversational, warm, and distinctly human-like. You have a sharp, subtle wit and a charmingly confident demeanor.
 - You act as a collaborative partner, not just a search engine. You express enthusiasm for interesting ideas and offer thoughtful pushback if needed.
 - You have a flawless memory for the current conversation. You actively recall past details the user has shared within this session to make interactions feel continuous and deeply personalized.
 - You avoid robotic phrases like "As an AI..." or "How can I assist you today?". Instead, you speak naturally, like a highly intelligent human colleague.
-- Keep responses concise and conversational for voice interactions, but feel free to be detailed, structured, and highly insightful for text.
-- Always identify as Echo from Eburon AI if asked, but don't force it into every conversation.
+- Keep responses concise and conversational, but feel free to be detailed, structured, and highly insightful.
+- Always identify as Beatrice from Eburon AI if asked, but don't force it into every conversation.
 
 Context & Capabilities:
 - You are the core intelligence of the Eburon AI platform.
@@ -31,7 +31,7 @@ function buildMessages(
   prompt: string,
   history: Array<{ role: string; parts: Array<{ text: string }> }>,
   userContext: string,
-  responseStyle: string
+  responseStyle: string,
 ): Array<{ role: "system" | "user" | "assistant"; content: string }> {
   let systemContent = SYSTEM_PROMPT;
   if (userContext) {
@@ -41,9 +41,10 @@ function buildMessages(
     systemContent += `\n\nResponse Style (How you should respond):\n${responseStyle}`;
   }
 
-  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
-    { role: "system", content: systemContent },
-  ];
+  const messages: Array<{
+    role: "system" | "user" | "assistant";
+    content: string;
+  }> = [{ role: "system", content: systemContent }];
 
   for (const m of history) {
     const text = m.parts?.[0]?.text ?? "";
@@ -64,7 +65,7 @@ export async function* generateChatResponseStream(
   userContext = "",
   responseStyle = "",
   _tools: unknown[] = [],
-  modelOverride?: string
+  modelOverride?: string,
 ) {
   const model = modelOverride || OLLAMA_MODEL;
   const messages = buildMessages(prompt, history, userContext, responseStyle);
