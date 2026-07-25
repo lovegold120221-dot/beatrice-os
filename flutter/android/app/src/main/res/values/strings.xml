@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Beatrice</string>
+    <string name="mobile_use_accessibility_description">Lets MobileUseAgent read visible app controls and perform user-approved taps, typing, gestures, Back, and Home during an active user-started session.</string>
+</resources>

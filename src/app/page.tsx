@@ -207,6 +207,7 @@ export default function App() {
   const [responseStyle, setResponseStyle] = useState("");
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [ollamaModel, setOllamaModel] = useState("");
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
 
   useEffect(() => {
     const savedUserContext = localStorage.getItem("eburon_userContext");
@@ -239,6 +240,19 @@ export default function App() {
         localStorage.setItem("eburon_ollamaModel", profile.ollama_model);
       }
     });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/ollama/models")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { models?: string[] } | null) => {
+        const models = payload?.models ?? [];
+        setOllamaModels(models);
+        if (models.length > 0) {
+          setOllamaModel((current) => current || models[0]);
+        }
+      })
+      .catch(() => setOllamaModels([]));
   }, []);
 
   useEffect(() => {
@@ -394,7 +408,7 @@ export default function App() {
           }
         };
       }
-      process(outputs) {
+      process(inputs, outputs) {
         const output = outputs[0];
         if (output.length > 0) {
           const channelData = output[0];
@@ -468,6 +482,7 @@ export default function App() {
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+      await audioContextRef.current.resume();
 
       await audioContextRef.current.audioWorklet.addModule(workletBlobUrlRef.current!);
 
@@ -503,13 +518,17 @@ export default function App() {
           workletNodeRef.current = processor;
         },
         (message) => {
-          if (message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data) {
-            const inlineData =
-              message.serverContent.modelTurn.parts[0].inlineData;
+          const parts = message.serverContent?.modelTurn?.parts ?? [];
+          for (const part of parts) {
+            const inlineData = part.inlineData;
+            if (!inlineData?.data) continue;
             const mimeType = inlineData.mimeType || "audio/pcm;rate=24000";
             const base64Audio = inlineData.data;
 
             if (mimeType.includes("pcm") && outputNodeRef.current) {
+              if (audioContextRef.current?.state === "suspended") {
+                void audioContextRef.current.resume();
+              }
               const binaryString = atob(base64Audio);
               const bytes = new Uint8Array(binaryString.length);
               for (let i = 0; i < binaryString.length; i++) {
@@ -533,10 +552,13 @@ export default function App() {
             }
           }
 
-          if (message.serverContent?.modelTurn?.parts?.[0]?.text) {
+          const text = parts
+            .map((part: { text?: string }) => part.text)
+            .filter(Boolean)
+            .join(" ");
+          if (text) {
             setLiveTranscription(
-              (prev) =>
-                prev + " " + message.serverContent.modelTurn.parts[0].text,
+              (prev) => prev + " " + text,
             );
           }
 
@@ -2074,13 +2096,7 @@ export default function App() {
                         className="w-full bg-[#212121] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-neutral-600"
                       />
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {[
-                          "llama3.2",
-                          "codemax-beta:latest",
-                          "mistral",
-                          "llama3.1",
-                          "qwen2.5",
-                        ].map((m) => (
+                        {ollamaModels.map((m) => (
                           <button
                             key={m}
                             onClick={() => setOllamaModel(m)}

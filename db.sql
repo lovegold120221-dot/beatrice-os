@@ -25,18 +25,22 @@ CREATE INDEX IF NOT EXISTS idx_memories_category ON public.memories(category);
 ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only access their own memories
+DROP POLICY IF EXISTS "Users can view their own memories" ON public.memories;
 CREATE POLICY "Users can view their own memories"
   ON public.memories FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own memories" ON public.memories;
 CREATE POLICY "Users can insert their own memories"
   ON public.memories FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own memories" ON public.memories;
 CREATE POLICY "Users can update their own memories"
   ON public.memories FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own memories" ON public.memories;
 CREATE POLICY "Users can delete their own memories"
   ON public.memories FOR DELETE
   USING (auth.uid() = user_id);
@@ -86,23 +90,30 @@ CREATE INDEX IF NOT EXISTS idx_chats_user_id ON public.chats(user_id);
 ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own chats" ON public.chats;
 CREATE POLICY "Users can view their own chats"
   ON public.chats FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert their own chats" ON public.chats;
 CREATE POLICY "Users can insert their own chats"
   ON public.chats FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update their own chats" ON public.chats;
 CREATE POLICY "Users can update their own chats"
   ON public.chats FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can delete their own chats" ON public.chats;
 CREATE POLICY "Users can delete their own chats"
   ON public.chats FOR DELETE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can view their own messages" ON public.messages;
 CREATE POLICY "Users can view their own messages"
   ON public.messages FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND user_id = auth.uid())
   );
+DROP POLICY IF EXISTS "Users can insert messages to their chats" ON public.messages;
 CREATE POLICY "Users can insert messages to their chats"
   ON public.messages FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND user_id = auth.uid())
   );
+DROP POLICY IF EXISTS "Users can delete their own messages" ON public.messages;
 CREATE POLICY "Users can delete their own messages"
   ON public.messages FOR DELETE USING (
     EXISTS (SELECT 1 FROM public.chats WHERE id = chat_id AND user_id = auth.uid())
@@ -115,22 +126,30 @@ CREATE TABLE IF NOT EXISTS public.device_profiles (
   response_style TEXT DEFAULT '',
   theme TEXT DEFAULT 'system',
   ollama_model TEXT DEFAULT '',
+  ollama_base_url TEXT DEFAULT '',
   last_seen_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Optional column for existing deployments (no-op if already present).
+ALTER TABLE public.device_profiles
+  ADD COLUMN IF NOT EXISTS ollama_base_url TEXT DEFAULT '';
 
 -- Row Level Security
 ALTER TABLE public.device_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read/insert/update by device_id (no auth required)
+DROP POLICY IF EXISTS "Anyone can read device_profiles" ON public.device_profiles;
 CREATE POLICY "Anyone can read device_profiles"
   ON public.device_profiles FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Anyone can insert device_profiles" ON public.device_profiles;
 CREATE POLICY "Anyone can insert device_profiles"
   ON public.device_profiles FOR INSERT
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Anyone can update device_profiles" ON public.device_profiles;
 CREATE POLICY "Anyone can update device_profiles"
   ON public.device_profiles FOR UPDATE
   USING (true);
