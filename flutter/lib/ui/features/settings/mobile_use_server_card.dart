@@ -3,8 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:beatrice/data/services/mobile_use_service.dart';
 import 'package:beatrice/data/services/mobile_use_agent_runtime.dart';
 import 'package:beatrice/data/services/mobile_planner_provider.dart';
+import 'package:beatrice/data/services/hosted_planner_service.dart';
 import 'package:beatrice/data/services/ollama_service.dart';
 import 'package:beatrice/ui/core/theme.dart';
+
+typedef HostedPlannerSettingsSaved =
+    Future<String> Function({
+      required String providerId,
+      required String model,
+      required String apiKey,
+    });
 
 class MobileUseServerCard extends StatefulWidget {
   final OllamaService ollamaService;
@@ -13,6 +21,11 @@ class MobileUseServerCard extends StatefulWidget {
   final String ollamaProvider;
   final String plannerProvider;
   final ValueChanged<String> onPlannerProviderChanged;
+  final String geminiApiKey;
+  final String groqApiKey;
+  final String geminiModel;
+  final String groqModel;
+  final HostedPlannerSettingsSaved onHostedPlannerSettingsSaved;
 
   const MobileUseServerCard({
     super.key,
@@ -22,6 +35,11 @@ class MobileUseServerCard extends StatefulWidget {
     required this.ollamaProvider,
     required this.plannerProvider,
     required this.onPlannerProviderChanged,
+    required this.geminiApiKey,
+    required this.groqApiKey,
+    required this.geminiModel,
+    required this.groqModel,
+    required this.onHostedPlannerSettingsSaved,
   });
 
   @override
@@ -37,18 +55,28 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
   String? _message;
   List<String> _ollamaModels = const [];
   String _ollamaStatus = 'Not checked';
+  List<String> _hostedModels = const [];
+  String _hostedStatus = 'Enter an API key, then refresh models.';
+  String? _hostedSelectedModel;
+  late final TextEditingController _geminiKeyController;
+  late final TextEditingController _groqKeyController;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _geminiKeyController = TextEditingController(text: widget.geminiApiKey);
+    _groqKeyController = TextEditingController(text: widget.groqApiKey);
+    _hostedSelectedModel = _savedHostedModel(widget.plannerProvider);
     _refresh();
-    _discoverOllama();
+    _discoverPlannerModels();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _geminiKeyController.dispose();
+    _groqKeyController.dispose();
     super.dispose();
   }
 
@@ -60,9 +88,18 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
   @override
   void didUpdateWidget(covariant MobileUseServerCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.plannerProvider != widget.plannerProvider &&
-        MobilePlannerProviders.byId(widget.plannerProvider).isIntegrated) {
-      _discoverOllama();
+    if (oldWidget.geminiApiKey != widget.geminiApiKey &&
+        _geminiKeyController.text != widget.geminiApiKey) {
+      _geminiKeyController.text = widget.geminiApiKey;
+    }
+    if (oldWidget.groqApiKey != widget.groqApiKey &&
+        _groqKeyController.text != widget.groqApiKey) {
+      _groqKeyController.text = widget.groqApiKey;
+    }
+    if (oldWidget.plannerProvider != widget.plannerProvider) {
+      _hostedSelectedModel = _savedHostedModel(widget.plannerProvider);
+      _hostedModels = const [];
+      _discoverPlannerModels();
     }
   }
 
@@ -75,8 +112,26 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
     }
   }
 
-  Future<void> _discoverOllama() async {
-    if (!MobilePlannerProviders.byId(widget.plannerProvider).isIntegrated) {
+  bool get _isHosted =>
+      widget.plannerProvider == MobilePlannerProviders.gemini ||
+      widget.plannerProvider == MobilePlannerProviders.groq;
+
+  TextEditingController get _hostedKeyController =>
+      widget.plannerProvider == MobilePlannerProviders.gemini
+      ? _geminiKeyController
+      : _groqKeyController;
+
+  String _savedHostedModel(String providerId) {
+    return providerId == MobilePlannerProviders.gemini
+        ? widget.geminiModel
+        : providerId == MobilePlannerProviders.groq
+        ? widget.groqModel
+        : '';
+  }
+
+  Future<void> _discoverPlannerModels() async {
+    final provider = MobilePlannerProviders.byId(widget.plannerProvider);
+    if (!provider.isIntegrated) {
       if (mounted) {
         setState(
           () => _ollamaStatus =
@@ -85,6 +140,14 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
       }
       return;
     }
+    if (_isHosted) {
+      await _discoverHostedModels();
+      return;
+    }
+    await _discoverOllama();
+  }
+
+  Future<void> _discoverOllama() async {
     if (mounted) setState(() => _ollamaStatus = 'Checking local Ollama…');
     final discovery = await widget.ollamaService.discoverModels();
     if (!mounted) return;
@@ -95,6 +158,66 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
       _ollamaModels = discovery.models;
       _ollamaStatus = discovery.status;
     });
+  }
+
+  Future<void> _discoverHostedModels() async {
+    final providerId = widget.plannerProvider;
+    final key = _hostedKeyController.text.trim();
+    setState(() {
+      _busy = true;
+      _hostedStatus = key.isEmpty
+          ? 'API key required before model discovery.'
+          : 'Checking ${MobilePlannerProviders.byId(providerId).label}…';
+    });
+    final service = HostedPlannerService(providerId: providerId, apiKey: key);
+    final discovery = await service.discoverModels();
+    if (!mounted || widget.plannerProvider != providerId) return;
+    final savedModel = _savedHostedModel(providerId);
+    setState(() {
+      _busy = false;
+      _hostedModels = discovery.models;
+      _hostedStatus = discovery.error ?? discovery.status;
+      if (_hostedModels.contains(_hostedSelectedModel)) {
+        return;
+      }
+      _hostedSelectedModel = _hostedModels.contains(savedModel)
+          ? savedModel
+          : null;
+    });
+  }
+
+  Future<void> _saveHostedSettings() async {
+    final model = _hostedSelectedModel?.trim() ?? '';
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      final result = await widget.onHostedPlannerSettingsSaved(
+        providerId: widget.plannerProvider,
+        model: model,
+        apiKey: _hostedKeyController.text,
+      );
+      if (mounted) {
+        setState(() {
+          _message = result;
+          _hostedStatus =
+              '${MobilePlannerProviders.byId(widget.plannerProvider).label} '
+              'is ready with $model.';
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _message = error.toString().replaceFirst(
+            RegExp(r'^(Exception|Bad state):\s*'),
+            '',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _run(Future<void> Function() action, String success) async {
@@ -343,7 +466,95 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
               fontSize: 10,
             ),
           ),
-          if (plannerProvider.isIntegrated) ...[
+          if (_isHosted) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _hostedKeyController,
+              obscureText: true,
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: InputDecoration(
+                labelText: '${plannerProvider.label} API key',
+                hintText: 'Stored securely on this device',
+                isDense: true,
+              ),
+              onChanged: (_) {
+                if (_hostedModels.isNotEmpty) {
+                  setState(() {
+                    _hostedModels = const [];
+                    _hostedSelectedModel = null;
+                    _hostedStatus =
+                        'API key changed. Refresh models before saving.';
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: 7),
+            DropdownButtonFormField<String>(
+              key: ValueKey(
+                '${widget.plannerProvider}-${_hostedModels.join('|')}',
+              ),
+              initialValue: _hostedModels.contains(_hostedSelectedModel)
+                  ? _hostedSelectedModel
+                  : null,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: 'Exact discovered ${plannerProvider.label} model',
+                isDense: true,
+              ),
+              items: _hostedModels
+                  .map(
+                    (model) => DropdownMenuItem(
+                      value: model,
+                      child: Text(
+                        model,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _busy
+                  ? null
+                  : (model) => setState(() => _hostedSelectedModel = model),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              _hostedStatus,
+              style: const TextStyle(color: AppColors.neutral400, fontSize: 10),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Online use sends the concise task and sanitized screen '
+              'observation to this provider. Native actions remain locally '
+              'allowlisted and verified. Provider/model sync to your signed-in '
+              'Supabase account; API keys stay in encrypted storage on each '
+              'device and are never put in the public device profile.',
+              style: TextStyle(color: AppColors.neutral500, fontSize: 10),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _discoverHostedModels,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Refresh models'),
+                ),
+                FilledButton.icon(
+                  onPressed:
+                      _busy ||
+                          _hostedSelectedModel == null ||
+                          _hostedSelectedModel!.isEmpty
+                      ? null
+                      : _saveHostedSettings,
+                  icon: const Icon(Icons.save_outlined, size: 16),
+                  label: const Text('Save settings'),
+                ),
+              ],
+            ),
+          ] else if (plannerProvider.isIntegrated) ...[
             const SizedBox(height: 5),
             Text(
               widget.ollamaProvider == 'cloud'
@@ -395,8 +606,8 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
             const Text(
               'Visible for provider planning only. MobileUseAgent will stop '
               'with a clear setup error instead of silently using another '
-              'provider. Choose Ollama Local or Ollama Cloud for working '
-              'execution in this build.',
+              'provider. Choose Ollama, Gemini, or Groq for working execution '
+              'in this build.',
               style: TextStyle(color: AppColors.neutral500, fontSize: 10),
             ),
           ],

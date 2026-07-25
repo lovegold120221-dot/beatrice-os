@@ -22,6 +22,8 @@ class MobilePlannerProvider {
 abstract final class MobilePlannerProviders {
   static const ollamaLocal = 'ollama-local';
   static const ollamaCloud = 'ollama-cloud';
+  static const gemini = 'gemini';
+  static const groq = 'groq';
 
   static const options = <MobilePlannerProvider>[
     MobilePlannerProvider(
@@ -39,17 +41,17 @@ abstract final class MobilePlannerProviders {
       isOnline: true,
     ),
     MobilePlannerProvider(
-      id: 'gemini',
+      id: gemini,
       label: 'Gemini',
-      description: 'Planner adapter and key setup are not configured yet.',
-      isIntegrated: false,
+      description: 'Google Gemini online planner with your API key.',
+      isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(
-      id: 'groq',
+      id: groq,
       label: 'Groq',
-      description: 'Planner adapter and key setup are not configured yet.',
-      isIntegrated: false,
+      description: 'GroqCloud online planner with your API key.',
+      isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(

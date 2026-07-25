@@ -1,3 +1,4 @@
+import 'package:beatrice/data/services/gemini_service.dart';
 import 'package:beatrice/data/services/live_api_service.dart';
 import 'package:beatrice/data/services/mobile_planner_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,27 @@ void main() {
     final properties = parameters['properties'] as Map<String, dynamic>;
     expect(properties.keys, containsAll(['task', 'intentType']));
     expect(properties['essentialDetailsComplete'], isA<Map>());
+    expect(declaration['description'], contains('Never guess'));
+  });
+
+  test('Live handoff behaves like a grounded conversational secretary', () {
+    final instruction = LiveApiService.secretaryHandoffInstruction;
+
+    expect(instruction, contains('Never predict, assume, autocomplete'));
+    expect(instruction, contains('repeat that word or phrase'));
+    expect(
+      instruction,
+      contains('Never make the user repeat the whole request'),
+    );
+    expect(
+      instruction,
+      contains('quietly preparing work while still listening'),
+    );
+    expect(instruction, contains('Call dispatch_mobile_task exactly once'));
+    expect(
+      instruction,
+      contains('does not mean the task started or completed'),
+    );
   });
 
   test('Live tool calls decode both API casing variants', () {
@@ -63,6 +85,45 @@ void main() {
     expect(responses.single['name'], 'dispatch_mobile_task');
   });
 
+  test('compatible native-audio setup enables affective dialogue', () {
+    const model = 'gemini-2.5-flash-native-audio-preview-12-2025';
+    expect(LiveApiService.supportsAffectiveDialog(model), isTrue);
+    expect(
+      LiveApiService.supportsAffectiveDialog('gemini-3.1-flash-live-preview'),
+      isFalse,
+    );
+
+    final payload = LiveApiService.buildSetupPayload(
+      model,
+      'Beatrice prompt',
+      LiveApiService.aoedeVoiceName,
+      16000,
+      24000,
+      enableAffectiveDialog: true,
+    );
+    final setup = payload['setup'] as Map<String, dynamic>;
+    final generation = setup['generationConfig'] as Map<String, dynamic>;
+    expect(generation['enableAffectiveDialog'], isTrue);
+    final speech = generation['speechConfig'] as Map<String, dynamic>;
+    final voiceConfig = speech['voiceConfig'] as Map<String, dynamic>;
+    final prebuilt = voiceConfig['prebuiltVoiceConfig'] as Map<String, dynamic>;
+    expect(prebuilt['voiceName'], 'Aoede');
+    final realtime = setup['realtimeInputConfig'] as Map<String, dynamic>;
+    expect(
+      realtime['activityHandling'],
+      LiveApiService.conversationalActivityHandling,
+    );
+    expect(realtime['activityHandling'], 'NO_INTERRUPTION');
+  });
+
+  test('Live voice contract uses a sentence-boundary handoff', () {
+    const prompt = GeminiService.voicePersonalityPrompt;
+
+    expect(prompt, contains('Finish only the short sentence'));
+    expect(prompt, contains('If their meaning was clear, respond to it'));
+    expect(prompt, contains('explicit "stop", "cancel", "wait"'));
+  });
+
   test(
     'provider menu is unique and marks only working adapters integrated',
     () {
@@ -83,7 +144,14 @@ void main() {
         ).isIntegrated,
         isTrue,
       );
-      expect(MobilePlannerProviders.byId('gemini').isIntegrated, isFalse);
+      expect(
+        MobilePlannerProviders.byId(MobilePlannerProviders.gemini).isIntegrated,
+        isTrue,
+      );
+      expect(
+        MobilePlannerProviders.byId(MobilePlannerProviders.groq).isIntegrated,
+        isTrue,
+      );
       expect(
         MobilePlannerProviders.byId('opencode-zen-free').label,
         contains('Zen'),

@@ -1,6 +1,7 @@
 import 'package:beatrice/data/models/device_profile.dart';
 import 'package:beatrice/data/repositories/supabase_repository.dart';
 import 'package:beatrice/data/services/device_service.dart';
+import 'package:beatrice/data/services/language_preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileService {
@@ -14,6 +15,7 @@ class ProfileService {
   // per-device property anyway (Termux runs on 127.0.0.1 on the device).
   static const _userContextKey = 'eburon_userContext';
   static const _responseStyleKey = 'eburon_responseStyle';
+  static const _languageKey = 'eburon_language';
   static const _themeKey = 'eburon_theme';
   static const _ollamaModelKey = 'eburon_ollamaModel';
   static const _ollamaBaseUrlKey = 'eburon_ollamaBaseUrl';
@@ -23,6 +25,7 @@ class ProfileService {
     return {
       'userContext': prefs.getString(_userContextKey) ?? '',
       'responseStyle': prefs.getString(_responseStyleKey) ?? '',
+      'language': LanguagePreferences.normalize(prefs.getString(_languageKey)),
       'theme': prefs.getString(_themeKey) ?? 'system',
       'ollamaModel': prefs.getString(_ollamaModelKey) ?? '',
       'ollamaBaseUrl':
@@ -33,6 +36,7 @@ class ProfileService {
   Future<void> saveLocalSettings({
     required String userContext,
     required String responseStyle,
+    required String language,
     required String theme,
     required String ollamaModel,
     required String ollamaBaseUrl,
@@ -40,6 +44,10 @@ class ProfileService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userContextKey, userContext);
     await prefs.setString(_responseStyleKey, responseStyle);
+    await prefs.setString(
+      _languageKey,
+      LanguagePreferences.normalize(language),
+    );
     await prefs.setString(_themeKey, theme);
     await prefs.setString(_ollamaModelKey, ollamaModel);
     await prefs.setString(_ollamaBaseUrlKey, ollamaBaseUrl);

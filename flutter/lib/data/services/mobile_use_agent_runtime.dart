@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'hosted_planner_service.dart';
 import 'mobile_planner_provider.dart';
 import 'mobile_task_coordinator.dart';
 import 'mobile_use_service.dart';
@@ -209,6 +210,8 @@ class MobileUseAgentRuntime {
       StreamController<MobileUseWorkflowEvent>.broadcast();
   OllamaService? _ollama;
   String _ollamaModel = '';
+  HostedPlannerService? _hostedPlanner;
+  String _hostedPlannerModel = '';
   String _plannerProviderId = MobilePlannerProviders.ollamaLocal;
   bool _cancelRequested = false;
   bool _taskRunning = false;
@@ -226,6 +229,11 @@ class MobileUseAgentRuntime {
 
   void configurePlannerProvider(String providerId) {
     _plannerProviderId = MobilePlannerProviders.byId(providerId).id;
+  }
+
+  void configureHostedPlanner(HostedPlannerService? service, String model) {
+    _hostedPlanner = service;
+    _hostedPlannerModel = model.trim();
   }
 
   void cancelCurrentTask() {
@@ -328,7 +336,7 @@ class MobileUseAgentRuntime {
         'I am connecting to the selected MobileUseAgent planner for this task.',
       ),
     );
-    await _ensureOllamaPlanner();
+    await _ensurePlanner();
     await _native.updateRuntimeTaskState(
       'active',
       'Working on: ${_boundedStatus(review.proposal.objective)}',
@@ -580,12 +588,9 @@ class MobileUseAgentRuntime {
         step: step,
         malformed: malformed,
       );
-      final output = await _ollama!.generatePlannerCommand(
-        prompt: prompt,
-        model: _ollamaModel,
-      );
+      final output = await _generatePlannerCommand(prompt);
       if (output.length > 6000) {
-        throw StateError('Local planner output exceeded its hard size limit.');
+        throw StateError('Planner output exceeded its hard size limit.');
       }
       try {
         final command = PlannerCommand.parse(output);
@@ -600,19 +605,79 @@ class MobileUseAgentRuntime {
       }
     }
     throw FormatException(
-      'The local planner returned malformed structured output twice: $lastError',
+      'The selected planner returned malformed structured output twice: '
+      '$lastError',
     );
   }
 
-  Future<void> _ensureOllamaPlanner() async {
+  Future<String> _generatePlannerCommand(String prompt) {
+    if (_plannerProviderId == MobilePlannerProviders.gemini ||
+        _plannerProviderId == MobilePlannerProviders.groq) {
+      return _hostedPlanner!.generatePlannerCommand(
+        prompt: prompt,
+        model: _hostedPlannerModel,
+      );
+    }
+    return _ollama!.generatePlannerCommand(prompt: prompt, model: _ollamaModel);
+  }
+
+  Future<void> _ensurePlanner() async {
     final provider = MobilePlannerProviders.byId(_plannerProviderId);
     if (!provider.isIntegrated) {
       throw StateError(
         '${provider.label} is listed as a future MobileUseAgent provider, '
         'but its authenticated planner adapter is not configured yet. '
-        'Choose Ollama Local or Ollama Cloud in Beatrice setup.',
+        'Choose an integrated provider in Beatrice setup.',
       );
     }
+    if (provider.id == MobilePlannerProviders.gemini ||
+        provider.id == MobilePlannerProviders.groq) {
+      await _ensureHostedPlanner(provider);
+      return;
+    }
+    await _ensureOllamaPlanner();
+  }
+
+  Future<void> _ensureHostedPlanner(MobilePlannerProvider provider) async {
+    final service = _hostedPlanner;
+    if (service == null || service.providerId != provider.id) {
+      throw StateError(
+        '${provider.label} is selected but has not been configured. '
+        'Open Beatrice setup, enter its API key, refresh models, choose one, '
+        'and tap Save settings.',
+      );
+    }
+    if (service.apiKey.trim().isEmpty) {
+      throw StateError(
+        '${provider.label} API key is missing. Add it in Beatrice setup and '
+        'tap Save settings.',
+      );
+    }
+    if (_hostedPlannerModel.isEmpty) {
+      throw StateError(
+        'No ${provider.label} MobileUseAgent model is selected. Refresh the '
+        'model list, choose one, and tap Save settings.',
+      );
+    }
+    final discovery = await service.discoverModels();
+    if (!discovery.isConnected) {
+      throw StateError(
+        '${provider.label} is unavailable. ${discovery.error ?? discovery.status}',
+      );
+    }
+    if (!discovery.models.contains(_hostedPlannerModel)) {
+      throw StateError(
+        'The selected ${provider.label} model "$_hostedPlannerModel" is not '
+        'available for this API key. Refresh models and select an exact model.',
+      );
+    }
+    debugPrint(
+      'MobileUseAgent: ${provider.label} connected; '
+      'using exact model $_hostedPlannerModel',
+    );
+  }
+
+  Future<void> _ensureOllamaPlanner() async {
     final ollama = _ollama;
     if (ollama == null || _ollamaModel.isEmpty) {
       throw StateError(
@@ -652,7 +717,7 @@ class MobileUseAgentRuntime {
     String? malformed,
   }) {
     return '''
-You are an offline Android next-action planner, not a chat assistant.
+You are an Android next-action planner, not a chat assistant.
 Return exactly one compact JSON object and no prose or code.
 TASK: $task
 CURRENT_STEP: $step of ${MobileTaskCoordinator.maxPlanningSteps}
@@ -661,6 +726,11 @@ PREVIOUS_VERIFIED_RESULT: ${jsonEncode(previousResult)}
 ALLOWED_ACTIONS: ${allowedActions.join(',')}
 ALLOWED_APP_PACKAGES: YouTube=com.google.android.youtube; Gmail=com.google.android.gm; Browser=com.android.chrome; Android Settings=com.android.settings; Messages=com.google.android.apps.messaging; WhatsApp=com.whatsapp; WhatsApp Business=com.whatsapp.w4b
 POLICY: consequential send/call/purchase/delete/post/submit/account/security actions require fresh confirmation; never emit shell, ADB, network, or arbitrary code.
+GROUNDING: Never guess, predict, or invent a UI element, app state, target,
+recipient, content, coordinate, or outcome. Use only TASK, SANITIZED_OBSERVATION,
+and PREVIOUS_VERIFIED_RESULT. If an execution-changing detail is missing, return
+ask_for_clarification with one concise question about that detail instead of an
+action.
 OUTPUT one of:
 {"kind":"action","action":"allowed_action","arguments":{},"message":"short expected result"}
 {"kind":"ask_for_clarification","message":"one concise question"}

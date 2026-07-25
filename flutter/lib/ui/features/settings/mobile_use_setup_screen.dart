@@ -12,6 +12,11 @@ class MobileUseSetupScreen extends StatefulWidget {
   final String ollamaProvider;
   final String plannerProvider;
   final ValueChanged<String> onPlannerProviderChanged;
+  final String geminiApiKey;
+  final String groqApiKey;
+  final String geminiModel;
+  final String groqModel;
+  final HostedPlannerSettingsSaved onHostedPlannerSettingsSaved;
 
   const MobileUseSetupScreen({
     super.key,
@@ -21,6 +26,11 @@ class MobileUseSetupScreen extends StatefulWidget {
     required this.ollamaProvider,
     required this.plannerProvider,
     required this.onPlannerProviderChanged,
+    required this.geminiApiKey,
+    required this.groqApiKey,
+    required this.geminiModel,
+    required this.groqModel,
+    required this.onHostedPlannerSettingsSaved,
   });
 
   @override
@@ -140,6 +150,11 @@ class _MobileUseSetupScreenState extends State<MobileUseSetupScreen>
           ollamaProvider: widget.ollamaProvider,
           plannerProvider: widget.plannerProvider,
           onPlannerProviderChanged: widget.onPlannerProviderChanged,
+          geminiApiKey: widget.geminiApiKey,
+          groqApiKey: widget.groqApiKey,
+          geminiModel: widget.geminiModel,
+          groqModel: widget.groqModel,
+          onHostedPlannerSettingsSaved: widget.onHostedPlannerSettingsSaved,
         ),
         const SizedBox(height: 14),
         Container(
@@ -163,7 +178,7 @@ class _MobileUseSetupScreenState extends State<MobileUseSetupScreen>
               const SizedBox(height: 4),
               const Text(
                 'Tap Allow individually to show Android’s standard prompt. '
-                'Denied permissions do not block chat, local planning, or '
+                'Denied permissions do not block chat, configured planning, or '
                 'other granted capabilities.',
                 style: TextStyle(color: AppColors.neutral400, fontSize: 11),
               ),

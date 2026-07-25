@@ -94,7 +94,7 @@ class MobileConfirmationRequest {
 /// Shared ingress for chat and Gemini Live.
 ///
 /// Gemini Live may translate speech into a structured objective, but it never
-/// plans or executes Android actions. A separately configured local planner
+/// plans or executes Android actions. A separately configured planner
 /// (for example a small Ollama/SmolLM model or OpenCode Zen) consumes only
 /// proposals that pass this policy review. Native effects remain behind a
 /// later, allowlisted executor.
@@ -107,32 +107,45 @@ class MobileTaskCoordinator {
     : _secureRandom = secureRandom ?? Random.secure();
 
   /// Typed chat bypasses Gemini and goes straight to consent review before the
-  /// selected offline MobileUseAgent planner.
+  /// selected MobileUseAgent planner.
   MobileTaskReview submitTypedTask(String objective) {
-    return _review(MobileTaskSource.chat, objective);
+    return _reviewWithClarification(MobileTaskSource.chat, objective);
   }
 
   /// Gemini Live is an online speech interpreter only. Its structured task is
-  /// reviewed identically before the local MobileUseAgent planner sees it.
+  /// reviewed identically before the selected MobileUseAgent planner sees it.
   MobileTaskReview submitLiveStructuredTask(String structuredObjective) {
-    final clarification = MobileTaskClarificationGate.questionFor(
+    return _reviewWithClarification(
+      MobileTaskSource.liveVoiceTranslation,
       structuredObjective,
     );
+  }
+
+  MobileTaskReview _reviewWithClarification(
+    MobileTaskSource source,
+    String rawObjective,
+  ) {
+    final objective = rawObjective.trim();
+    if (objective.isEmpty || objective.length > maxTaskCharacters) {
+      return _review(source, rawObjective);
+    }
+    final clarification = MobileTaskClarificationGate.questionFor(rawObjective);
     if (clarification != null) {
       final proposal = MobileTaskProposal(
         id: _token(),
-        source: MobileTaskSource.liveVoiceTranslation,
-        objective: structuredObjective.trim(),
+        source: source,
+        objective: rawObjective.trim(),
         createdAt: DateTime.now(),
       );
       return MobileTaskReview(
         proposal: proposal,
         decision: MobileTaskDecision.clarificationRequired,
-        explanation: 'The spoken task is not specific enough to dispatch.',
+        explanation:
+            'The task is not specific enough to dispatch without guessing.',
         clarificationQuestion: clarification,
       );
     }
-    return _review(MobileTaskSource.liveVoiceTranslation, structuredObjective);
+    return _review(source, rawObjective);
   }
 
   MobileTaskReview proposeFromChat(String objective) =>
@@ -186,7 +199,7 @@ class MobileTaskCoordinator {
       proposal: proposal,
       decision: MobileTaskDecision.readyForLocalPlanning,
       explanation:
-          'Ready for the configured local planner. No Android action has run.',
+          'Ready for the configured planner. No Android action has run.',
     );
   }
 
@@ -239,8 +252,33 @@ class MobileTaskClarificationGate {
       return 'What exact action would you like me to perform on your phone?';
     }
     final isEmail = task.contains('email') || task.contains('mail ');
-    if (isEmail && !RegExp(r'\b(to|recipient)\s+[\w@.]').hasMatch(task)) {
+    final isEmailComposition =
+        isEmail &&
+        (RegExp(
+              r'\b(draft|compose|prepare|send|reply|write)\b',
+            ).hasMatch(task) ||
+            RegExp(r'^(?:please\s+)?email\s+\S+').hasMatch(task)) &&
+        !RegExp(
+          r'\b(delete|remove|archive|read|check|review)\b',
+        ).hasMatch(task);
+    if (isEmailComposition && !_hasSpecificRecipient(task)) {
       return 'Who should receive the email?';
+    }
+    if (isEmailComposition &&
+        RegExp(r'\b(send|reply)\b').hasMatch(task) &&
+        !_hasMessageContent(task)) {
+      return 'What should the email say?';
+    }
+    final isDirectMessage =
+        task.contains('message') ||
+        task.contains('text ') ||
+        task.contains('sms');
+    if (isDirectMessage &&
+        RegExp(
+          r'\b(draft|compose|prepare|send|reply|message|text)\b',
+        ).hasMatch(task) &&
+        !_hasSpecificMessageRecipient(task)) {
+      return 'Who should receive the message?';
     }
     if (task.contains('attach') &&
         !RegExp(r'\b(attach|attachment)\s+[\w./-]+').hasMatch(task) &&
@@ -253,10 +291,90 @@ class MobileTaskClarificationGate {
         !task.contains(' on ')) {
       return 'Which app or account should I use?';
     }
+    if (_needsSearchTarget(task)) {
+      return 'What exactly should I search for?';
+    }
+    if (RegExp(
+      r'^(open|launch)\s+(the\s+)?(app|application)$',
+    ).hasMatch(task)) {
+      return 'Which app should I open?';
+    }
     if (RegExp(r'^(open|find|change|delete|remove)\s*$').hasMatch(task)) {
       return 'What exact target should I use?';
     }
     return null;
+  }
+
+  static bool _hasSpecificRecipient(String task) {
+    if (RegExp(r'\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b').hasMatch(task)) {
+      return true;
+    }
+    final match = RegExp(r'\b(?:to|recipient)\s+([^,.;]+)').firstMatch(task);
+    if (match == null) return false;
+    var recipient = match.group(1)?.trim() ?? '';
+    recipient = recipient
+        .replaceFirst(RegExp(r'\b(?:and|with|about|regarding)\b.*$'), '')
+        .trim();
+    const ambiguousRecipients = {
+      '',
+      'someone',
+      'somebody',
+      'them',
+      'him',
+      'her',
+      'my colleague',
+      'a colleague',
+      'my friend',
+      'a friend',
+      'my boss',
+      'the client',
+      'my client',
+      'the team',
+      'my contact',
+      'a contact',
+    };
+    return !ambiguousRecipients.contains(recipient);
+  }
+
+  static bool _hasMessageContent(String task) {
+    return RegExp(
+      r'\b(?:saying|say|message|body|subject|about|regarding|tell(?:ing)?)\b',
+    ).hasMatch(task);
+  }
+
+  static bool _hasSpecificMessageRecipient(String task) {
+    if (_hasSpecificRecipient(task)) return true;
+    final match = RegExp(
+      r'\b(?:message|text)\s+([a-z][\w.-]*(?:\s+[a-z][\w.-]*)?)\b',
+    ).firstMatch(task);
+    if (match == null) return false;
+    final recipient = match.group(1)?.trim() ?? '';
+    const nonRecipients = {
+      '',
+      'someone',
+      'somebody',
+      'them',
+      'him',
+      'her',
+      'in whatsapp',
+      'on whatsapp',
+      'using whatsapp',
+      'in messages',
+      'on messages',
+      'the team',
+      'my colleague',
+      'my friend',
+    };
+    return !nonRecipients.contains(recipient);
+  }
+
+  static bool _needsSearchTarget(String task) {
+    if (!RegExp(r'\b(search|find)\b').hasMatch(task)) return false;
+    if (RegExp(r'\b(search|find)\s+for\s+\S+').hasMatch(task)) return false;
+    if (RegExp(r'\b(search|find)\s+[\w-]+\s+(?:on|in)\s+\S+').hasMatch(task)) {
+      return false;
+    }
+    return RegExp(r'\b(search|find)(?:\s+(?:on|in)\s+\S+)?\s*$').hasMatch(task);
   }
 
   static bool _looksLikePhoneAction(String task) {

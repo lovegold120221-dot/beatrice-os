@@ -131,6 +131,35 @@ class SupabaseRepository {
         .upsert(profile, onConflict: 'device_id');
   }
 
+  Future<Map<String, dynamic>?> loadMobileAgentSettings() async {
+    final user = this.user;
+    if (user == null) return null;
+    try {
+      final response = await _client
+          .from('mobile_agent_settings')
+          .select('provider,model,updated_at')
+          .eq('user_id', user.id)
+          .maybeSingle();
+      return response == null ? null : Map<String, dynamic>.from(response);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> saveMobileAgentSettings({
+    required String provider,
+    required String model,
+  }) async {
+    final user = this.user;
+    if (user == null) return;
+    await _client.from('mobile_agent_settings').upsert({
+      'user_id': user.id,
+      'provider': provider,
+      'model': model,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'user_id');
+  }
+
   Future<String?> uploadImage(
     String userId,
     Uint8List bytes,

@@ -22,8 +22,11 @@ import 'package:beatrice/data/services/memory_service.dart';
 import 'package:beatrice/data/services/profile_service.dart';
 import 'package:beatrice/data/services/mobile_use_agent_runtime.dart';
 import 'package:beatrice/data/services/mobile_planner_provider.dart';
+import 'package:beatrice/data/services/hosted_planner_service.dart';
 import 'package:beatrice/data/services/mobile_task_coordinator.dart';
 import 'package:beatrice/data/services/mobile_use_service.dart';
+import 'package:beatrice/data/services/language_preferences.dart';
+import 'package:beatrice/data/services/voice_opening_service.dart';
 import 'package:beatrice/ui/core/theme.dart';
 import 'package:beatrice/ui/features/home/home_screen.dart';
 import 'package:beatrice/ui/features/chat/widgets/message_bubble.dart';
@@ -75,14 +78,19 @@ class _BeatriceHomeState extends State<BeatriceHome>
   late final ProfileService _profileService;
   late final WebLookupService _webLookup;
   late final LocalOcrService _localOcr;
+  late final VoiceOpeningService _voiceOpening;
+  late final HostedPlannerService _geminiPlanner;
+  late final HostedPlannerService _groqPlanner;
   final MobileUseAgentRuntime _mobileUseAgent = MobileUseAgentRuntime.instance;
   final MobileTaskCoordinator _liveTaskPreflight = MobileTaskCoordinator();
   StreamSubscription<MobileUseWorkflowEvent>? _mobileUseEventSub;
   final List<MobileUseWorkflowEvent> _pendingMobileVoiceEvents = [];
   final Set<String> _handledLiveToolCallIds = {};
+  final VoiceOpeningGate _liveOpeningGate = VoiceOpeningGate();
   bool _liveUserTurnActive = false;
   DateTime? _lastMobileVoiceUpdate;
   Timer? _mobileVoiceFlushTimer;
+  Timer? _liveOpeningTimer;
   late final ScrollController _scrollController;
   late final TextEditingController _inputController;
 
@@ -121,6 +129,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
 
   String _userContext = '';
   String _responseStyle = '';
+  String _language = LanguagePreferences.defaultLanguage;
   String _theme = 'system';
   String _ollamaModel = '';
   String _ollamaProvider = 'local';
@@ -128,6 +137,10 @@ class _BeatriceHomeState extends State<BeatriceHome>
   String _localOllamaModel = '';
   String _cloudOllamaModel = '';
   String _ollamaCloudApiKey = '';
+  String _geminiPlannerApiKey = '';
+  String _groqPlannerApiKey = '';
+  String _geminiPlannerModel = '';
+  String _groqPlannerModel = '';
   String _ollamaBaseUrl = 'http://127.0.0.1:11434';
   String _openCodeUrl = 'http://127.0.0.1:4096';
 
@@ -157,6 +170,13 @@ class _BeatriceHomeState extends State<BeatriceHome>
     _profileService = ProfileService(_repo);
     _webLookup = WebLookupService();
     _localOcr = LocalOcrService();
+    _voiceOpening = VoiceOpeningService();
+    _geminiPlanner = HostedPlannerService(
+      providerId: MobilePlannerProviders.gemini,
+    );
+    _groqPlanner = HostedPlannerService(
+      providerId: MobilePlannerProviders.groq,
+    );
     _scrollController = ScrollController();
     _inputController = TextEditingController();
     _mobileUseEventSub = _mobileUseAgent.verifiedEvents.listen((event) {
@@ -184,6 +204,9 @@ class _BeatriceHomeState extends State<BeatriceHome>
       if (data.session?.user != null) {
         _loadMemories();
         _fetchChatHistory();
+        if (_isInitialized) {
+          unawaited(_restoreSyncedMobileAgentSettings());
+        }
       }
     });
 
@@ -194,9 +217,14 @@ class _BeatriceHomeState extends State<BeatriceHome>
     final prefs = await SharedPreferences.getInstance();
     final cloudKey =
         await _secureStorage.read(key: 'eburon_ollama_cloud_api_key') ?? '';
+    final geminiPlannerKey =
+        await _secureStorage.read(key: 'eburon_gemini_planner_api_key') ?? '';
+    final groqPlannerKey =
+        await _secureStorage.read(key: 'eburon_groq_planner_api_key') ?? '';
     setState(() {
       _userContext = settings['userContext']!;
       _responseStyle = settings['responseStyle']!;
+      _language = LanguagePreferences.normalize(settings['language']);
       _theme = settings['theme']!;
       _ollamaProvider = prefs.getString('eburon_ollamaProvider') ?? 'local';
       _mobilePlannerProvider =
@@ -213,8 +241,14 @@ class _BeatriceHomeState extends State<BeatriceHome>
           : _localOllamaModel;
       _ollamaBaseUrl = settings['ollamaBaseUrl']!;
       _ollamaCloudApiKey = cloudKey;
+      _geminiPlannerApiKey = geminiPlannerKey;
+      _groqPlannerApiKey = groqPlannerKey;
+      _geminiPlannerModel = prefs.getString('eburon_geminiPlannerModel') ?? '';
+      _groqPlannerModel = prefs.getString('eburon_groqPlannerModel') ?? '';
       _taskMode = prefs.getBool('eburon_chatTaskMode') ?? false;
     });
+    _geminiPlanner.configure(apiKey: _geminiPlannerApiKey);
+    _groqPlanner.configure(apiKey: _groqPlannerApiKey);
     _configureSelectedOllama();
     try {
       _ocrEnglishReady = await _localOcr.isEnglishReady();
@@ -248,6 +282,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
       }
     } catch (_) {}
 
+    await _restoreSyncedMobileAgentSettings();
     await _autoSelectOllamaModel();
     _configureSelectedOllama();
 
@@ -287,6 +322,43 @@ class _BeatriceHomeState extends State<BeatriceHome>
     await prefs.setString('eburon_$key', value);
   }
 
+  String get _effectiveResponseStyle {
+    final languageInstruction = LanguagePreferences.responseInstruction(
+      _language,
+    );
+    final style = _responseStyle.trim();
+    return style.isEmpty
+        ? languageInstruction
+        : '$style\n\n$languageInstruction';
+  }
+
+  String _plannerModelForProvider(String providerId) {
+    return switch (providerId) {
+      MobilePlannerProviders.ollamaLocal => _localOllamaModel,
+      MobilePlannerProviders.ollamaCloud => _cloudOllamaModel,
+      MobilePlannerProviders.gemini => _geminiPlannerModel,
+      MobilePlannerProviders.groq => _groqPlannerModel,
+      _ => '',
+    };
+  }
+
+  void _configureSelectedPlanner() {
+    _mobileUseAgent.configurePlannerProvider(_mobilePlannerProvider);
+    switch (_mobilePlannerProvider) {
+      case MobilePlannerProviders.gemini:
+        _geminiPlanner.configure(apiKey: _geminiPlannerApiKey);
+        _mobileUseAgent.configureHostedPlanner(
+          _geminiPlanner,
+          _geminiPlannerModel,
+        );
+      case MobilePlannerProviders.groq:
+        _groqPlanner.configure(apiKey: _groqPlannerApiKey);
+        _mobileUseAgent.configureHostedPlanner(_groqPlanner, _groqPlannerModel);
+      default:
+        _mobileUseAgent.configureHostedPlanner(null, '');
+    }
+  }
+
   void _configureSelectedOllama() {
     final cloud = _ollamaProvider == 'cloud';
     _ollama.configure(
@@ -296,13 +368,12 @@ class _BeatriceHomeState extends State<BeatriceHome>
       apiKey: cloud ? _ollamaCloudApiKey : '',
     );
     _mobileUseAgent.configureOllama(_ollama, _ollamaModel);
-    _mobileUseAgent.configurePlannerProvider(_mobilePlannerProvider);
+    _configureSelectedPlanner();
   }
 
   Future<void> _changeMobilePlannerProvider(String providerId) async {
     final provider = MobilePlannerProviders.byId(providerId);
     setState(() => _mobilePlannerProvider = provider.id);
-    _mobileUseAgent.configurePlannerProvider(provider.id);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('eburon_mobilePlannerProvider', provider.id);
 
@@ -310,6 +381,136 @@ class _BeatriceHomeState extends State<BeatriceHome>
       await _changeOllamaProvider('local');
     } else if (provider.id == MobilePlannerProviders.ollamaCloud) {
       await _changeOllamaProvider('cloud');
+    }
+    _configureSelectedOllama();
+    final model = _plannerModelForProvider(provider.id);
+    if (_user != null && provider.isIntegrated && model.isNotEmpty) {
+      try {
+        await _repo.saveMobileAgentSettings(
+          provider: provider.id,
+          model: model,
+        );
+      } catch (error) {
+        debugPrint('MobileUseAgent settings sync unavailable: $error');
+      }
+    }
+  }
+
+  Future<String> _saveHostedPlannerSettings({
+    required String providerId,
+    required String model,
+    required String apiKey,
+  }) async {
+    final provider = MobilePlannerProviders.byId(providerId);
+    if (provider.id != MobilePlannerProviders.gemini &&
+        provider.id != MobilePlannerProviders.groq) {
+      throw StateError('Only Gemini or Groq uses hosted planner settings.');
+    }
+    final selectedModel = model.trim();
+    final selectedKey = apiKey.trim();
+    if (selectedKey.isEmpty) {
+      throw StateError('${provider.label} API key is required.');
+    }
+    if (selectedModel.isEmpty) {
+      throw StateError('Select an exact ${provider.label} model first.');
+    }
+    final service = provider.id == MobilePlannerProviders.gemini
+        ? _geminiPlanner
+        : _groqPlanner;
+    service.configure(apiKey: selectedKey);
+    final discovery = await service.discoverModels();
+    if (!discovery.isConnected) {
+      throw StateError(discovery.error ?? discovery.status);
+    }
+    if (!discovery.models.contains(selectedModel)) {
+      throw StateError(
+        'The selected model is no longer available. Refresh and choose an '
+        'exact model returned for this key.',
+      );
+    }
+
+    final secureKeyName = provider.id == MobilePlannerProviders.gemini
+        ? 'eburon_gemini_planner_api_key'
+        : 'eburon_groq_planner_api_key';
+    final modelPreference = provider.id == MobilePlannerProviders.gemini
+        ? 'eburon_geminiPlannerModel'
+        : 'eburon_groqPlannerModel';
+    await _secureStorage.write(key: secureKeyName, value: selectedKey);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(modelPreference, selectedModel);
+    await prefs.setString('eburon_mobilePlannerProvider', provider.id);
+
+    if (mounted) {
+      setState(() {
+        _mobilePlannerProvider = provider.id;
+        if (provider.id == MobilePlannerProviders.gemini) {
+          _geminiPlannerApiKey = selectedKey;
+          _geminiPlannerModel = selectedModel;
+        } else {
+          _groqPlannerApiKey = selectedKey;
+          _groqPlannerModel = selectedModel;
+        }
+      });
+    }
+    _configureSelectedPlanner();
+
+    if (_user != null) {
+      try {
+        await _repo.saveMobileAgentSettings(
+          provider: provider.id,
+          model: selectedModel,
+        );
+      } catch (_) {
+        throw StateError(
+          'Saved securely on this device, but Supabase account sync is not '
+          'available yet. Apply the mobile_agent_settings migration in db.sql '
+          'to the configured Supabase project, then tap Save settings again.',
+        );
+      }
+      return 'Saved securely on this device. Provider and model synced to '
+          'your signed-in Beatrice account.';
+    }
+    return 'Saved securely on this device. Sign in to sync the provider and '
+        'model to your other devices.';
+  }
+
+  Future<void> _restoreSyncedMobileAgentSettings() async {
+    if (_user == null) return;
+    final synced = await _repo.loadMobileAgentSettings();
+    if (synced == null) return;
+    final providerId = synced['provider']?.toString() ?? '';
+    final model = synced['model']?.toString().trim() ?? '';
+    final provider = MobilePlannerProviders.byId(providerId);
+    if (provider.id != providerId || !provider.isIntegrated || model.isEmpty) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('eburon_mobilePlannerProvider', providerId);
+    switch (providerId) {
+      case MobilePlannerProviders.ollamaLocal:
+        _ollamaProvider = 'local';
+        _localOllamaModel = model;
+        _ollamaModel = model;
+        await prefs.setString('eburon_ollamaProvider', 'local');
+        await prefs.setString('eburon_ollamaLocalModel', model);
+      case MobilePlannerProviders.ollamaCloud:
+        _ollamaProvider = 'cloud';
+        _cloudOllamaModel = model;
+        _ollamaModel = model;
+        await prefs.setString('eburon_ollamaProvider', 'cloud');
+        await prefs.setString('eburon_ollamaCloudModel', model);
+      case MobilePlannerProviders.gemini:
+        _geminiPlannerModel = model;
+        await prefs.setString('eburon_geminiPlannerModel', model);
+      case MobilePlannerProviders.groq:
+        _groqPlannerModel = model;
+        await prefs.setString('eburon_groqPlannerModel', model);
+    }
+    if (mounted) {
+      setState(() => _mobilePlannerProvider = providerId);
+    } else {
+      _mobilePlannerProvider = providerId;
     }
     _configureSelectedOllama();
   }
@@ -355,6 +556,19 @@ class _BeatriceHomeState extends State<BeatriceHome>
       model,
     );
     await _saveSetting('ollamaModel', model);
+    final selectedOllamaProvider = _ollamaProvider == 'cloud'
+        ? MobilePlannerProviders.ollamaCloud
+        : MobilePlannerProviders.ollamaLocal;
+    if (_user != null && _mobilePlannerProvider == selectedOllamaProvider) {
+      try {
+        await _repo.saveMobileAgentSettings(
+          provider: selectedOllamaProvider,
+          model: model,
+        );
+      } catch (error) {
+        debugPrint('MobileUseAgent settings sync unavailable: $error');
+      }
+    }
   }
 
   Future<void> _autoSaveProfile() async {
@@ -483,7 +697,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
               _memoryService.buildMemoryContext(_memories),
             if (_conversationContext.isNotEmpty) _conversationContext,
           ].where((value) => value.isNotEmpty).join('\n\n'),
-          responseStyle: _responseStyle,
+          responseStyle: _effectiveResponseStyle,
         );
         fullText.write(response);
         setState(() {
@@ -779,8 +993,29 @@ class _BeatriceHomeState extends State<BeatriceHome>
   bool _liveDisconnecting = false;
   int _liveAudioSampleRate = 24000;
 
+  String _liveOpeningPastContext() {
+    final parts = <String>[];
+    final conversation = _conversationContext.trim();
+    if (conversation.isNotEmpty) {
+      parts.add('Recent conversation summary: $conversation');
+    }
+    for (final memory in _memories) {
+      final category = memory['category']?.toString() ?? '';
+      if (category != 'user_preference' && category != 'instruction') {
+        continue;
+      }
+      final content = memory['content']?.toString().trim() ?? '';
+      if (content.isNotEmpty) parts.add(content);
+      if (parts.length >= 4) break;
+    }
+    return parts.join('\n');
+  }
+
   void _toggleVoiceMode() async {
     if (_liveDisconnecting) return;
+    _liveOpeningTimer?.cancel();
+    _liveOpeningTimer = null;
+    _liveOpeningGate.reset();
     setState(() {
       _isVoiceOpen = true;
       _isLiveActive = false;
@@ -793,6 +1028,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _handledLiveToolCallIds.clear();
     });
 
+    final dailyBriefFuture = _voiceOpening.loadDailyBrief();
     try {
       final permission = await MobileUseService().getStatus();
       if (permission.optionalPermissions['microphone'] != true) {
@@ -806,47 +1042,29 @@ class _BeatriceHomeState extends State<BeatriceHome>
           );
         }
       }
+      final dailyBrief = await dailyBriefFuture.timeout(
+        const Duration(milliseconds: 650),
+        onTimeout: () => null,
+      );
+      final openingInstruction = VoiceOpeningService.buildOpeningInstruction(
+        pastContext: _liveOpeningPastContext(),
+        dailyBrief: dailyBrief,
+      );
       final systemInstruction =
           '${GeminiService.voicePersonalityPrompt}\n\n'
-          'ROLE PRIORITY: In Gemini Live, Beatrice is the sole natural '
-          'continuous conversational assistant and capable secretary. Accept '
-          'natural requests, understand the current intent, ask one concise '
-          'question only when an essential detail is absent, then internally '
-          'delegate one compact actionable task brief (single task, at most '
-          '800 characters). Give a brief natural acknowledgment and remain '
-          'available for conversation while work runs. Narrate only status, '
-          'failure, retry, clarification, approval, and final-result facts '
-          'explicitly supplied by the coordinator. Never imply background '
-          'completion, invent progress, speak over the user, reveal the '
-          'internal planner, forward a raw transcript, control Android '
-          'yourself, or produce a lengthy prompt/plan. On failure, state the '
-          'verified reason and offer retry once; retry only after an explicit '
-          'affirmative. The internal coordinator alone owns the bounded '
-          '50-step execution loop.\n\n'
-          'MANDATORY MOBILE HANDOFF: When the user asks Beatrice to operate '
-          'this phone or another Android app, first identify the user’s exact '
-          'current intent and verify that every essential parameter is known '
-          'from the conversation without guessing. Classify it as PHONE_TASK '
-          'only when it is a genuine phone action. If a target, recipient, '
-          'app/account, attachment/file, or requested action is missing or '
-          'ambiguous, ask one concise question and do not call a tool yet. '
-          'Once verified, call dispatch_mobile_task exactly once with one '
-          'concise task brief, intentType PHONE_TASK, and '
-          'essentialDetailsComplete true. Do not merely describe the handoff '
-          'in speech. Routine low-risk tasks do not need an extra spoken '
-          'confirmation; consequential actions still require the app’s fresh '
-          'policy confirmation. The function only delivers the task to the '
-          'app coordinator; it does not prove completion. Speak progress and '
-          'results only from later coordinator-verified events. After a '
-          'verified task handoff, the visible Android task service '
-          'may continue the accepted workflow when Beatrice is minimized. '
-          'Do not imply that Live microphone or camera capture continues in '
-          'the background, and do not promise recovery after force-stop or '
-          'Android process termination.';
+          '${LanguagePreferences.responseInstruction(_language)}\n\n'
+          '${LiveApiService.secretaryHandoffInstruction}\n\n'
+          'BACKGROUND LIMIT: After a verified task handoff, the visible '
+          'Android task service may continue the accepted workflow when '
+          'Beatrice is minimized. Do not imply that Live microphone or camera '
+          'capture continues in the background, and do not promise recovery '
+          'after force-stop or Android process termination.\n\n'
+          '$openingInstruction';
       final stream = await _liveApi.connect(
         apiKey: _gemini.apiKey,
         model: GeminiService.models['live']!,
         systemInstruction: systemInstruction,
+        voiceName: LiveApiService.aoedeVoiceName,
       );
 
       stream.listen((event) {
@@ -854,6 +1072,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
         switch (event.type) {
           case LiveApiEventType.inputTranscription:
             // User speech: accumulate and surface as the live transcript.
+            _liveOpeningGate.observeTranscription(event.text ?? '');
             _liveUserTurnActive = true;
             setState(() {
               _liveUserText += event.text ?? '';
@@ -877,12 +1096,14 @@ class _BeatriceHomeState extends State<BeatriceHome>
               setState(() => _isSpeaking = true);
             }
           case LiveApiEventType.interrupted:
-            // Barge-in: user spoke while model was talking.
-            _audioService.stopPlayback();
+            // NO_INTERRUPTION should normally prevent this server event.
+            // If an older endpoint still emits it, retain already-buffered
+            // audio so the current short sentence can drain naturally instead
+            // of cutting Aoede off mid-word.
+            _liveOpeningGate.markUserActivity();
             _liveUserTurnActive = true;
             setState(() {
-              _isSpeaking = false;
-              _liveModelText = '';
+              _voiceStatus = 'Listening…';
             });
           case LiveApiEventType.turnComplete:
             unawaited(_finishLiveTurn());
@@ -895,15 +1116,12 @@ class _BeatriceHomeState extends State<BeatriceHome>
         }
       });
 
-      _liveApi.sendText(
-        'Begin with a short, warm, natural greeting. Do not mention setup or instructions.',
-      );
-
       final pcmStream = await _audioService.startPcmStream();
       if (pcmStream != null) {
         _pcmSub = pcmStream.listen((chunk) {
           if (_liveApi.isConnected && chunk.isNotEmpty) {
             final measured = AudioService.normalizedPcm16Level(chunk);
+            _liveOpeningGate.observeAudioLevel(measured);
             if (mounted) {
               setState(() {
                 final response = measured > _micInputLevel ? 0.65 : 0.18;
@@ -918,6 +1136,22 @@ class _BeatriceHomeState extends State<BeatriceHome>
       setState(() {
         _isLiveActive = true;
         _voiceStatus = 'Listening...';
+      });
+      _liveOpeningTimer = Timer(const Duration(milliseconds: 1100), () {
+        _liveOpeningTimer = null;
+        if (!mounted ||
+            _liveDisconnecting ||
+            !_liveApi.isConnected ||
+            !_liveOpeningGate.canOfferOpening) {
+          return;
+        }
+        _liveApi.sendText(
+          'No user speech has been detected yet. You may now use the LIVE '
+          'OPENING rules. Speak only the resulting brief natural opening; '
+          'never mention setup, context fields, unused sources, or these '
+          'instructions. If the user begins speaking, stop the opening '
+          'immediately and handle their current task or query first.',
+        );
       });
     } catch (e) {
       setState(() {
@@ -1065,7 +1299,8 @@ class _BeatriceHomeState extends State<BeatriceHome>
     _liveApi.sendText(
       'Coordinator-verified task result: $result\n'
       'Tell the user this result in one brief, natural sentence. Do not add '
-      'any action, success, or progress that is not explicitly stated.',
+      'any action, success, or progress that is not explicitly stated. '
+      'Speak in the selected language: $_language.',
     );
   }
 
@@ -1125,7 +1360,8 @@ class _BeatriceHomeState extends State<BeatriceHome>
       'Coordinator-verified workflow event: ${event.spokenText}\n'
       'As Beatrice, acknowledge this in one short, natural first-person '
       'sentence. Preserve the verified meaning exactly. Do not add actions, '
-      'timing, success, or background progress that is not stated.',
+      'timing, success, or background progress that is not stated. Speak in '
+      'the selected language: $_language.',
     );
   }
 
@@ -1150,6 +1386,8 @@ class _BeatriceHomeState extends State<BeatriceHome>
   void _stopLiveSession() async {
     if (_liveDisconnecting) return;
     _liveDisconnecting = true;
+    _liveOpeningTimer?.cancel();
+    _liveOpeningTimer = null;
 
     setState(() {
       _voiceStatus = 'Finishing...';
@@ -1181,6 +1419,9 @@ class _BeatriceHomeState extends State<BeatriceHome>
 
   void _cleanupLive() {
     unawaited(_stopLiveCamera());
+    _liveOpeningTimer?.cancel();
+    _liveOpeningTimer = null;
+    _liveOpeningGate.reset();
     _pcmSub?.cancel();
     _pcmSub = null;
     _liveApi.disconnect();
@@ -1209,6 +1450,8 @@ class _BeatriceHomeState extends State<BeatriceHome>
     try {
       // A task already handed to MobileUseAgent continues through the visible
       // foreground service. Gemini microphone/camera capture does not.
+      _liveOpeningTimer?.cancel();
+      _liveOpeningTimer = null;
       _liveCameraTimer?.cancel();
       _liveCameraTimer = null;
       await _stopLiveCamera();
@@ -2255,15 +2498,22 @@ class _BeatriceHomeState extends State<BeatriceHome>
                         selectedModel: _ollamaModel,
                         ollamaProvider: _ollamaProvider,
                         plannerProvider: _mobilePlannerProvider,
+                        geminiApiKey: _geminiPlannerApiKey,
+                        groqApiKey: _groqPlannerApiKey,
+                        geminiModel: _geminiPlannerModel,
+                        groqModel: _groqPlannerModel,
                         onModelChanged: (model) =>
                             unawaited(_changeSelectedOllamaModel(model)),
                         onPlannerProviderChanged: (provider) =>
                             unawaited(_changeMobilePlannerProvider(provider)),
+                        onHostedPlannerSettingsSaved:
+                            _saveHostedPlannerSettings,
                       )
                     : SettingsScreen(
                         key: ValueKey(_ollamaProvider),
                         userContext: _userContext,
                         responseStyle: _responseStyle,
+                        language: _language,
                         theme: _theme,
                         ollamaModel: _ollamaModel,
                         ollamaBaseUrl: _ollamaBaseUrl,
@@ -2280,6 +2530,9 @@ class _BeatriceHomeState extends State<BeatriceHome>
                             setState(() => _userContext = v),
                         onResponseStyleChanged: (v) =>
                             setState(() => _responseStyle = v),
+                        onLanguageChanged: (v) => setState(
+                          () => _language = LanguagePreferences.normalize(v),
+                        ),
                         onOllamaModelChanged: (v) =>
                             unawaited(_changeSelectedOllamaModel(v)),
                         onOllamaBaseUrlChanged: (v) {
@@ -2297,6 +2550,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
                           await _profileService.saveLocalSettings(
                             userContext: _userContext,
                             responseStyle: _responseStyle,
+                            language: _language,
                             theme: _theme,
                             ollamaModel: _localOllamaModel,
                             ollamaBaseUrl: _ollamaBaseUrl,

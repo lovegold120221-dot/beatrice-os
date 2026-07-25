@@ -153,3 +153,37 @@ DROP POLICY IF EXISTS "Anyone can update device_profiles" ON public.device_profi
 CREATE POLICY "Anyone can update device_profiles"
   ON public.device_profiles FOR UPDATE
   USING (true);
+
+-- Per-user MobileUseAgent provider/model selection.
+--
+-- Provider API keys are intentionally not stored here. The Flutter app keeps
+-- them in platform encrypted storage on each device. This row follows the
+-- authenticated user across devices without exposing credentials through the
+-- public device_profiles table.
+CREATE TABLE IF NOT EXISTS public.mobile_agent_settings (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL DEFAULT 'ollama-local',
+  model TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.mobile_agent_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their MobileUseAgent settings"
+  ON public.mobile_agent_settings;
+CREATE POLICY "Users can view their MobileUseAgent settings"
+  ON public.mobile_agent_settings FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their MobileUseAgent settings"
+  ON public.mobile_agent_settings;
+CREATE POLICY "Users can insert their MobileUseAgent settings"
+  ON public.mobile_agent_settings FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their MobileUseAgent settings"
+  ON public.mobile_agent_settings;
+CREATE POLICY "Users can update their MobileUseAgent settings"
+  ON public.mobile_agent_settings FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);

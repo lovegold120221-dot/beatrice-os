@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:beatrice/data/services/ollama_service.dart';
 import 'package:beatrice/data/services/opencode_service.dart';
 import 'package:beatrice/ui/core/theme.dart';
+import 'package:beatrice/ui/features/settings/language_picker.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String userContext;
   final String responseStyle;
+  final String language;
   final String theme;
   final String ollamaModel;
   final String ollamaBaseUrl;
@@ -17,6 +19,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<String> onOpenCodeUrlChanged;
   final ValueChanged<String> onUserContextChanged;
   final ValueChanged<String> onResponseStyleChanged;
+  final ValueChanged<String> onLanguageChanged;
   final ValueChanged<String> onOllamaModelChanged;
   final ValueChanged<String> onOllamaBaseUrlChanged;
   final ValueChanged<String> onOllamaProviderChanged;
@@ -28,6 +31,7 @@ class SettingsScreen extends StatefulWidget {
     super.key,
     required this.userContext,
     required this.responseStyle,
+    required this.language,
     required this.theme,
     required this.ollamaModel,
     required this.ollamaBaseUrl,
@@ -39,6 +43,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onOpenCodeUrlChanged,
     required this.onUserContextChanged,
     required this.onResponseStyleChanged,
+    required this.onLanguageChanged,
     required this.onOllamaModelChanged,
     required this.onOllamaBaseUrlChanged,
     required this.onOllamaProviderChanged,
@@ -185,6 +190,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: _inputDecoration(
               'e.g., Keep responses concise and use code examples...',
             ),
+          ),
+          const SizedBox(height: 24),
+          _label('Language'),
+          const SizedBox(height: 4),
+          const Text(
+            'Beatrice uses this as her preferred response language and aims '
+            'for natural, idiomatic delivery. You can still request a '
+            'different language during a conversation.',
+            style: TextStyle(color: AppColors.neutral500, fontSize: 11),
+          ),
+          const SizedBox(height: 8),
+          LanguagePickerField(
+            selectedLanguage: widget.language,
+            onSelected: widget.onLanguageChanged,
           ),
           const SizedBox(height: 24),
           _label('Ollama provider'),

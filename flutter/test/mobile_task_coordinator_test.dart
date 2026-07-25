@@ -106,6 +106,35 @@ void main() {
     expect(review.decision, MobileTaskDecision.readyForLocalPlanning);
   });
 
+  test('typed Task mode asks instead of guessing a recipient', () {
+    final review = coordinator.submitTypedTask(
+      'Draft an email to my colleague about the project',
+    );
+
+    expect(review.decision, MobileTaskDecision.clarificationRequired);
+    expect(review.clarificationQuestion, contains('receive'));
+  });
+
+  test('an incomplete search asks for the exact query', () {
+    final review = coordinator.submitLiveStructuredTask(
+      'Open the browser and search',
+    );
+
+    expect(review.decision, MobileTaskDecision.clarificationRequired);
+    expect(review.clarificationQuestion, contains('search for'));
+  });
+
+  test('a complete email brief preserves exact supplied details', () {
+    final review = coordinator.submitLiveStructuredTask(
+      'Draft an email to alex@example.com saying the review is at 3 PM '
+      'using Gmail',
+    );
+
+    expect(review.decision, MobileTaskDecision.readyForLocalPlanning);
+    expect(review.proposal.objective, contains('alex@example.com'));
+    expect(review.proposal.objective, contains('3 PM'));
+  });
+
   test('planner accepts exactly one structured allowlisted action', () {
     final command = PlannerCommand.parse(
       '{"kind":"action","action":"click_text",'
@@ -130,7 +159,8 @@ void main() {
 
   test('compose and send can prepare before final action confirmation', () {
     final review = coordinator.submitTypedTask(
-      'Compose an email to alex@example.com and send it',
+      'Compose an email to alex@example.com saying the report is ready and '
+      'send it',
     );
 
     expect(review.decision, MobileTaskDecision.readyForLocalPlanning);
