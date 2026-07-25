@@ -5,6 +5,7 @@ import 'beatrice_persona.dart';
 
 class GeminiService {
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+  static const String speechVoiceName = 'Kore';
   final String apiKey;
 
   GeminiService(this.apiKey);
@@ -330,7 +331,7 @@ class GeminiService {
         'responseModalities': ['AUDIO'],
         'speechConfig': {
           'voiceConfig': {
-            'prebuiltVoiceConfig': {'voiceName': 'Aoede'},
+            'prebuiltVoiceConfig': {'voiceName': speechVoiceName},
           },
         },
       },

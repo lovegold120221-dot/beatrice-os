@@ -106,6 +106,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
   bool _isLiveActive = false;
   bool _isSpeaking = false;
   double _micInputLevel = 0;
+  int _lastMicVisualizerUpdateMicros = 0;
   bool _isSidebarOpen = false;
   bool _showHeaderMenu = false;
   String _liveTranscription = '';
@@ -171,6 +172,9 @@ class _BeatriceHomeState extends State<BeatriceHome>
     _webLookup = WebLookupService();
     _localOcr = LocalOcrService();
     _voiceOpening = VoiceOpeningService();
+    // Warm optional public opening context in the background. Entering Live
+    // never waits on news; user speech and connection readiness come first.
+    unawaited(_voiceOpening.loadDailyBrief());
     _geminiPlanner = HostedPlannerService(
       providerId: MobilePlannerProviders.gemini,
     );
@@ -1021,6 +1025,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _isLiveActive = false;
       _isSpeaking = false;
       _micInputLevel = 0;
+      _lastMicVisualizerUpdateMicros = 0;
       _voiceStatus = 'Connecting...';
       _liveModelText = '';
       _liveUserText = '';
@@ -1028,7 +1033,6 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _handledLiveToolCallIds.clear();
     });
 
-    final dailyBriefFuture = _voiceOpening.loadDailyBrief();
     try {
       final permission = await MobileUseService().getStatus();
       if (permission.optionalPermissions['microphone'] != true) {
@@ -1042,13 +1046,9 @@ class _BeatriceHomeState extends State<BeatriceHome>
           );
         }
       }
-      final dailyBrief = await dailyBriefFuture.timeout(
-        const Duration(milliseconds: 650),
-        onTimeout: () => null,
-      );
       final openingInstruction = VoiceOpeningService.buildOpeningInstruction(
         pastContext: _liveOpeningPastContext(),
-        dailyBrief: dailyBrief,
+        dailyBrief: _voiceOpening.cachedBriefForToday,
       );
       final systemInstruction =
           '${GeminiService.voicePersonalityPrompt}\n\n'
@@ -1064,8 +1064,9 @@ class _BeatriceHomeState extends State<BeatriceHome>
         apiKey: _gemini.apiKey,
         model: GeminiService.models['live']!,
         systemInstruction: systemInstruction,
-        voiceName: LiveApiService.aoedeVoiceName,
+        voiceName: LiveApiService.koreVoiceName,
       );
+      unawaited(_audioService.prepareLivePlayback());
 
       stream.listen((event) {
         if (_liveDisconnecting) return;
@@ -1093,13 +1094,15 @@ class _BeatriceHomeState extends State<BeatriceHome>
                   _liveAudioSampleRate,
                 ),
               );
-              setState(() => _isSpeaking = true);
+              if (!_isSpeaking) {
+                setState(() => _isSpeaking = true);
+              }
             }
           case LiveApiEventType.interrupted:
             // NO_INTERRUPTION should normally prevent this server event.
             // If an older endpoint still emits it, retain already-buffered
             // audio so the current short sentence can drain naturally instead
-            // of cutting Aoede off mid-word.
+            // of cutting Kore off mid-word.
             _liveOpeningGate.markUserActivity();
             _liveUserTurnActive = true;
             setState(() {
@@ -1122,11 +1125,15 @@ class _BeatriceHomeState extends State<BeatriceHome>
           if (_liveApi.isConnected && chunk.isNotEmpty) {
             final measured = AudioService.normalizedPcm16Level(chunk);
             _liveOpeningGate.observeAudioLevel(measured);
-            if (mounted) {
-              setState(() {
-                final response = measured > _micInputLevel ? 0.65 : 0.18;
-                _micInputLevel += (measured - _micInputLevel) * response;
-              });
+            final response = measured > _micInputLevel ? 0.65 : 0.18;
+            _micInputLevel += (measured - _micInputLevel) * response;
+            final nowMicros = DateTime.now().microsecondsSinceEpoch;
+            if (mounted &&
+                nowMicros - _lastMicVisualizerUpdateMicros >= 80000) {
+              _lastMicVisualizerUpdateMicros = nowMicros;
+              // Audio still streams every 40 ms. Only the decorative meter is
+              // throttled so root-widget rebuilds cannot contend with PCM.
+              setState(() {});
             }
             _liveApi.sendAudioChunk(chunk, turnComplete: false);
           }
@@ -1393,6 +1400,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _voiceStatus = 'Finishing...';
       _isSpeaking = false;
       _micInputLevel = 0;
+      _lastMicVisualizerUpdateMicros = 0;
     });
 
     await _pcmSub?.cancel();
@@ -1436,6 +1444,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _isLiveActive = false;
       _isSpeaking = false;
       _micInputLevel = 0;
+      _lastMicVisualizerUpdateMicros = 0;
       _liveTranscription = '';
       _liveModelText = '';
       _liveUserText = '';

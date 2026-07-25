@@ -10,6 +10,11 @@ import 'package:flutter/services.dart';
 
 class AudioService {
   static const _livePcm = MethodChannel('com.eburon.beatrice/live_pcm_v1');
+  static const int liveInputSampleRate = 16000;
+  static const int liveOutputSampleRate = 24000;
+  static const int liveInputChunkDurationMs = 40;
+  static const int liveInputBufferBytes =
+      liveInputSampleRate * 2 * liveInputChunkDurationMs ~/ 1000;
   final AudioRecorder _recorder = AudioRecorder();
   final AudioPlayer _player = AudioPlayer();
   String? _recordingPath;
@@ -37,7 +42,9 @@ class AudioService {
     return ((decibels + 60) / 54).clamp(0.0, 1.0);
   }
 
-  Future<Stream<Uint8List>?> startPcmStream({int sampleRate = 16000}) async {
+  Future<Stream<Uint8List>?> startPcmStream({
+    int sampleRate = liveInputSampleRate,
+  }) async {
     if (!await _recorder.hasPermission()) {
       throw Exception('Microphone permission denied');
     }
@@ -51,7 +58,9 @@ class AudioService {
         autoGain: true,
         echoCancel: true,
         noiseSuppress: true,
-        streamBufferSize: 1280,
+        // 40 ms PCM16 chunks stay inside Gemini Live's recommended 20–40 ms
+        // range without dropping below common Android AudioRecord minima.
+        streamBufferSize: liveInputBufferBytes,
         androidConfig: const AndroidRecordConfig(
           audioSource: AndroidAudioSource.voiceCommunication,
           audioManagerMode: AudioManagerMode.modeInCommunication,
@@ -110,6 +119,14 @@ class AudioService {
     await _player.stop();
     try {
       await _livePcm.invokeMethod<void>('stop');
+    } catch (_) {}
+  }
+
+  Future<void> prepareLivePlayback({
+    int sampleRate = liveOutputSampleRate,
+  }) async {
+    try {
+      await _livePcm.invokeMethod<void>('prepare', {'sampleRate': sampleRate});
     } catch (_) {}
   }
 

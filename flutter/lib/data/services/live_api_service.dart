@@ -45,7 +45,7 @@ class LiveFunctionCall {
 class LiveApiService {
   static const _stableApiVersion = 'v1beta';
   static const _affectiveApiVersion = 'v1alpha';
-  static const String aoedeVoiceName = 'Aoede';
+  static const String koreVoiceName = 'Kore';
   static const String conversationalActivityHandling = 'NO_INTERRUPTION';
 
   static const Map<String, dynamic> mobileTaskToolDeclaration = {
@@ -137,7 +137,7 @@ SEAMLESS SECRETARY BEHAVIOR
     required String apiKey,
     required String model,
     required String systemInstruction,
-    String voiceName = aoedeVoiceName,
+    String voiceName = koreVoiceName,
     int clientSampleRate = 16000,
     int serverSampleRate = 24000,
     bool? enableAffectiveDialog,
@@ -210,6 +210,10 @@ SEAMLESS SECRETARY BEHAVIOR
         normalized.contains('native-audio');
   }
 
+  static bool supportsThinkingBudget(String model) {
+    return model.toLowerCase().contains('gemini-2.5');
+  }
+
   static Map<String, dynamic> buildSetupPayload(
     String model,
     String systemInstruction,
@@ -224,6 +228,14 @@ SEAMLESS SECRETARY BEHAVIOR
         'generationConfig': {
           'responseModalities': ['AUDIO'],
           if (enableAffectiveDialog) 'enableAffectiveDialog': true,
+          if (supportsThinkingBudget(model))
+            'thinkingConfig': {
+              // Gemini 2.5 Live uses dynamic thinking by default. Voice turns
+              // prioritize immediate conversation; MobileUseAgent performs
+              // the separate bounded task planning.
+              'thinkingBudget': 0,
+              'includeThoughts': false,
+            },
           'speechConfig': {
             'voiceConfig': {
               'prebuiltVoiceConfig': {'voiceName': voiceName},
@@ -250,7 +262,7 @@ SEAMLESS SECRETARY BEHAVIOR
             'prefixPaddingMs': 40,
             'silenceDurationMs': 500,
           },
-          // Let Aoede complete the current short sentence instead of having
+          // Let Kore complete the current short sentence instead of having
           // server VAD cut the audio mid-word. The voice contract keeps turns
           // brief and requires an immediate yield after that sentence.
           'activityHandling': conversationalActivityHandling,
@@ -262,14 +274,29 @@ SEAMLESS SECRETARY BEHAVIOR
 
   void sendAudioChunk(Uint8List pcmData, {bool turnComplete = false}) {
     if (!_setupComplete) return;
-    final msg = {
+    if (turnComplete) {
+      _channel!.sink.add(jsonEncode(buildAudioStreamEndPayload()));
+      return;
+    }
+    if (pcmData.isEmpty) return;
+    _channel!.sink.add(jsonEncode(buildRealtimeAudioPayload(pcmData)));
+  }
+
+  static Map<String, dynamic> buildRealtimeAudioPayload(Uint8List pcmData) {
+    return {
       'realtimeInput': {
-        'mediaChunks': [
-          {'mimeType': 'audio/pcm;rate=16000', 'data': base64Encode(pcmData)},
-        ],
+        'audio': {
+          'mimeType': 'audio/pcm;rate=16000',
+          'data': base64Encode(pcmData),
+        },
       },
     };
-    _channel!.sink.add(jsonEncode(msg));
+  }
+
+  static Map<String, dynamic> buildAudioStreamEndPayload() {
+    return {
+      'realtimeInput': {'audioStreamEnd': true},
+    };
   }
 
   void sendVideoFrame(Uint8List jpegData) {
@@ -277,9 +304,7 @@ SEAMLESS SECRETARY BEHAVIOR
     _channel!.sink.add(
       jsonEncode({
         'realtimeInput': {
-          'mediaChunks': [
-            {'mimeType': 'image/jpeg', 'data': base64Encode(jpegData)},
-          ],
+          'video': {'mimeType': 'image/jpeg', 'data': base64Encode(jpegData)},
         },
       }),
     );

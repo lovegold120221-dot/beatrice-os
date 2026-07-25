@@ -12,6 +12,12 @@ Uint8List _constantPcm16(int sample, {int count = 160}) {
 }
 
 void main() {
+  test('Live microphone chunks stay within realtime 40 ms PCM frames', () {
+    expect(AudioService.liveInputSampleRate, 16000);
+    expect(AudioService.liveInputChunkDurationMs, 40);
+    expect(AudioService.liveInputBufferBytes, 1280);
+  });
+
   test('PCM microphone meter is silent for zero samples', () {
     expect(AudioService.normalizedPcm16Level(_constantPcm16(0)), 0);
   });

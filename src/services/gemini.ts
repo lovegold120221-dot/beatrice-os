@@ -26,6 +26,8 @@ export const models = {
   live: "gemini-2.5-flash-native-audio-preview-12-2025",
 };
 
+const BEATRICE_VOICE_NAME = "Kore";
+
 const VOICE_PERSONALITY_PROMPT_BODY = BEATRICE_VOICE_PROMPT;
 
 export const SYSTEM_PROMPT = BEATRICE_CHAT_PROMPT;
@@ -240,7 +242,7 @@ export async function textToSpeech(text: string) {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: "Aoede" },
+          prebuiltVoiceConfig: { voiceName: BEATRICE_VOICE_NAME },
         },
       },
     },
@@ -299,7 +301,9 @@ export function connectLive(
     config: {
       responseModalities: [Modality.AUDIO],
       speechConfig: {
-        voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: BEATRICE_VOICE_NAME },
+        },
       },
       systemInstruction: finalSystemPrompt,
       outputAudioTranscription: {},

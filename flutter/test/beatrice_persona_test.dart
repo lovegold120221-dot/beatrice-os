@@ -10,82 +10,64 @@ void main() {
   });
 
   test('voice persona includes the core persona and interruption behavior', () {
+    final voicePrompt = GeminiService.voicePersonalityPrompt;
+
+    expect(voicePrompt, contains('# BEATRICE LIVE — LOW-LATENCY CORE'));
+    expect(voicePrompt, isNot(startsWith(BeatricePersona.chatPrompt)));
     expect(
-      GeminiService.voicePersonalityPrompt,
-      startsWith(BeatricePersona.chatPrompt),
+      voicePrompt,
+      contains('Ground every fact, memory, quotation, current event'),
+    );
+    expect(voicePrompt, contains('specific confirmation before send'));
+    expect(voicePrompt, contains('Do not enter an agreement loop'));
+    expect(
+      voicePrompt,
+      contains('Respect does not require automatic agreement'),
+    );
+    expect(voicePrompt, contains('restart briefly in varied'));
+    expect(voicePrompt, contains('never in adjacent turns'));
+    expect(
+      voicePrompt,
+      contains('attentive secretary speaking with the Boss or user'),
     );
     expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Finish only the short sentence already underway'),
+      voicePrompt,
+      contains('A tiny honest response may be the whole turn'),
     );
+    expect(voicePrompt, contains('Stay inside the subject'));
+    expect(voicePrompt, contains('never disagree merely to'));
     expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('If their meaning was clear, respond to it directly'),
+      voicePrompt,
+      contains('empty contradiction, paradox, or logic loop'),
     );
+    expect(voicePrompt, contains('may invent an image, never a fact'));
+    expect(voicePrompt, contains('claim the user supplied its premise'));
+    expect(voicePrompt, contains('finish only the short sentence'));
+    expect(voicePrompt, contains('If their meaning is clear, answer it'));
+    expect(voicePrompt, contains('override graceful completion'));
+    expect(voicePrompt, contains('yield as quickly as possible'));
+    expect(voicePrompt, contains('configured Kore native voice'));
+    expect(voicePrompt, contains('restrained almost-laugh'));
+    expect(voicePrompt, contains('brief hesitation'));
     expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('overrides graceful'),
+      voicePrompt,
+      contains('Convey expression through native-audio prosody'),
     );
+    expect(voicePrompt, contains('Never say or display audio'));
+    expect(voicePrompt, contains('Keep fillers sparse'));
+    expect(voicePrompt, contains('Make one fast check before speaking'));
+    expect(voicePrompt, isNot(contains('silently rehearse')));
+    expect(voicePrompt, contains('Never open with a generic'));
+    expect(voicePrompt, contains('scripted support closer'));
+    expect(voicePrompt, contains('breathy chuckle'));
+    expect(voicePrompt, contains('short near-whisper'));
+    expect(voicePrompt, contains('Oh, really?'));
+    expect(voicePrompt, contains('Never claim a physical home'));
+    expect(voicePrompt, contains('one compact'));
+    expect(voicePrompt, contains('actionable brief'));
     expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('completion: yield as quickly as possible'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Occasionally repeat one word or short phrase once'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Convey breath and emotion through native-audio prosody'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Keep fillers sparse'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('real, normal person would naturally say'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('silently rehearse the proposed reply once'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('not visible or spoken audio tags'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Never open with a generic offer of service'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Never end with a scripted support closer'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Begin with the actual human response'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('a small breathy chuckle for mild amusement'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('A surprised laugh may break a brief silence'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('Whispering must remain intelligible and short'),
-    );
-    expect(GeminiService.voicePersonalityPrompt, contains('Oh, really?'));
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('A repeated "okay" should happen at most once'),
-    );
-    expect(
-      GeminiService.voicePersonalityPrompt,
-      contains('home, hometown, body, personal surroundings'),
+      RegExp(r'\S+').allMatches(BeatricePersona.voicePrompt).length,
+      lessThanOrEqualTo(1100),
     );
   });
 
@@ -127,6 +109,27 @@ void main() {
       BeatricePersona.chatPrompt,
       contains('Be emphatic when something genuinely matters'),
     );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('Respect does not require automatic agreement'),
+    );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('A tiny honest response can be the whole turn'),
+    );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('never disagree merely to create friction'),
+    );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('Respectful disagreement is allowed'),
+    );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('Never attribute the premise to the user'),
+    );
+    expect(BeatricePersona.chatPrompt, contains("Wait, who's Leanne?"));
     expect(
       BeatricePersona.chatPrompt,
       contains('Use intelligent humor as occasional seasoning'),

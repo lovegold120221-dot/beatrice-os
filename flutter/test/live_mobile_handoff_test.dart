@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:beatrice/data/services/gemini_service.dart';
 import 'package:beatrice/data/services/live_api_service.dart';
 import 'package:beatrice/data/services/mobile_planner_provider.dart';
@@ -96,7 +98,7 @@ void main() {
     final payload = LiveApiService.buildSetupPayload(
       model,
       'Beatrice prompt',
-      LiveApiService.aoedeVoiceName,
+      LiveApiService.koreVoiceName,
       16000,
       24000,
       enableAffectiveDialog: true,
@@ -104,10 +106,14 @@ void main() {
     final setup = payload['setup'] as Map<String, dynamic>;
     final generation = setup['generationConfig'] as Map<String, dynamic>;
     expect(generation['enableAffectiveDialog'], isTrue);
+    final thinking = generation['thinkingConfig'] as Map<String, dynamic>;
+    expect(thinking['thinkingBudget'], 0);
+    expect(thinking['includeThoughts'], isFalse);
     final speech = generation['speechConfig'] as Map<String, dynamic>;
     final voiceConfig = speech['voiceConfig'] as Map<String, dynamic>;
     final prebuilt = voiceConfig['prebuiltVoiceConfig'] as Map<String, dynamic>;
-    expect(prebuilt['voiceName'], 'Aoede');
+    expect(prebuilt['voiceName'], 'Kore');
+    expect(GeminiService.speechVoiceName, 'Kore');
     final realtime = setup['realtimeInputConfig'] as Map<String, dynamic>;
     expect(
       realtime['activityHandling'],
@@ -116,12 +122,26 @@ void main() {
     expect(realtime['activityHandling'], 'NO_INTERRUPTION');
   });
 
+  test('Live audio uses current realtime fields and flushes stream end', () {
+    final audio = LiveApiService.buildRealtimeAudioPayload(
+      Uint8List.fromList([1, 2, 3, 4]),
+    );
+    final realtime = audio['realtimeInput'] as Map<String, dynamic>;
+
+    expect(realtime['audio'], isA<Map<String, dynamic>>());
+    expect(realtime, isNot(contains('mediaChunks')));
+    expect(LiveApiService.buildAudioStreamEndPayload(), {
+      'realtimeInput': {'audioStreamEnd': true},
+    });
+  });
+
   test('Live voice contract uses a sentence-boundary handoff', () {
     const prompt = GeminiService.voicePersonalityPrompt;
 
-    expect(prompt, contains('Finish only the short sentence'));
-    expect(prompt, contains('If their meaning was clear, respond to it'));
-    expect(prompt, contains('explicit "stop", "cancel", "wait"'));
+    expect(prompt, contains('finish only the short sentence'));
+    expect(prompt, contains('If their meaning is clear, answer it'));
+    expect(prompt, contains('Explicit stop,'));
+    expect(prompt, contains('cancel, wait, urgent warnings'));
   });
 
   test(

@@ -36,7 +36,9 @@ class VerifiedOpeningQuote {
 /// Transcription is authoritative. The short audio-energy guard covers the
 /// interval before the Live API has returned a transcript.
 class VoiceOpeningGate {
-  static const double speechLevelThreshold = 0.58;
+  // Err toward suppressing an optional opening. A false positive only removes
+  // a greeting; a false negative can make Beatrice talk over quiet first words.
+  static const double speechLevelThreshold = 0.45;
   static const int requiredConsecutiveSpeechChunks = 2;
 
   bool _userHasSpoken = false;
@@ -113,16 +115,27 @@ class VoiceOpeningService {
   final DateTime Function() _clock;
   DailyNewsBrief? _cachedBrief;
   String? _cachedDate;
+  Future<DailyNewsBrief?>? _loadingBrief;
 
   VoiceOpeningService({http.Client? client, DateTime Function()? clock})
     : _client = client ?? http.Client(),
       _clock = clock ?? DateTime.now;
 
-  Future<DailyNewsBrief?> loadDailyBrief() async {
+  DailyNewsBrief? get cachedBriefForToday {
+    final key = _dateKey(_dateOnly(_clock()));
+    return _cachedDate == key ? _cachedBrief : null;
+  }
+
+  Future<DailyNewsBrief?> loadDailyBrief() {
     final today = _dateOnly(_clock());
     final key = _dateKey(today);
-    if (_cachedDate == key) return _cachedBrief;
+    if (_cachedDate == key) return Future.value(_cachedBrief);
+    return _loadingBrief ??= _loadAndCache(today, key).whenComplete(() {
+      _loadingBrief = null;
+    });
+  }
 
+  Future<DailyNewsBrief?> _loadAndCache(DateTime today, String key) async {
     // The current-day Wikimedia feed can be empty near midnight, so check the
     // previous two days without ever presenting an older item as "just now".
     for (var offset = 0; offset < 3; offset++) {

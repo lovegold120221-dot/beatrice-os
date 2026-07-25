@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:beatrice/data/services/voice_opening_service.dart';
@@ -67,6 +68,43 @@ void main() {
     expect(brief.story, isNot(contains('<b>')));
     expect(brief.sourceName, VoiceOpeningService.sourceName);
     expect(brief.sourceUrl, startsWith('https://'));
+    expect(service.cachedBriefForToday, same(brief));
+  });
+
+  test('coalesces concurrent daily brief warmup requests', () async {
+    var requests = 0;
+    final completer = Completer<http.Response>();
+    final client = MockClient((_) {
+      requests++;
+      return completer.future;
+    });
+    final service = VoiceOpeningService(
+      client: client,
+      clock: () => DateTime.utc(2026, 7, 26),
+    );
+
+    final first = service.loadDailyBrief();
+    final second = service.loadDailyBrief();
+    await Future<void>.delayed(Duration.zero);
+    expect(requests, 1);
+    completer.complete(
+      http.Response(
+        jsonEncode({
+          'news': [
+            {
+              'story':
+                  'A mathematics research team published a notable result.',
+              'links': const [],
+            },
+          ],
+        }),
+        200,
+      ),
+    );
+
+    expect(await first, isNotNull);
+    expect(await second, same(await first));
+    expect(requests, 1);
   });
 
   test('does not turn distressing news into a casual opening', () async {
