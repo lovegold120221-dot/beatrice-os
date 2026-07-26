@@ -1283,6 +1283,24 @@ export default function App() {
           </div>
         </header>
 
+        {/* Tab Bar */}
+        <div className="absolute top-[72px] left-0 right-0 z-20 flex justify-center px-4">
+          <div className="bg-[#1a1a1a] rounded-full p-1 flex items-center border border-neutral-800">
+            <button
+              onClick={() => setView("chat")}
+              className={`px-5 py-2 text-sm rounded-full transition-colors ${view === "chat" || view === "home" ? "bg-white text-black font-medium" : "text-neutral-400 hover:text-white"}`}
+            >
+              Chat
+            </button>
+            <button
+              onClick={() => setView("models")}
+              className={`px-5 py-2 text-sm rounded-full transition-colors ${view === "models" ? "bg-white text-black font-medium" : "text-neutral-400 hover:text-white"}`}
+            >
+              Models
+            </button>
+          </div>
+        </div>
+
         {/* Main Content Area */}
         <div className="flex-1 relative overflow-hidden">
           <AnimatePresence mode="wait">
