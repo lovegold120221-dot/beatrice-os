@@ -128,6 +128,22 @@ class GeminiService {
     }
   }
 
+  Future<String> generateChatText({
+    required String prompt,
+    List<Map<String, dynamic>> history = const [],
+    String userContext = '',
+    String responseStyle = '',
+  }) async {
+    final stream = await generateChatResponseStream(
+      prompt: prompt,
+      history: history,
+      userContext: userContext,
+      responseStyle: responseStyle,
+    );
+    final parts = await stream.toList();
+    return parts.join();
+  }
+
   Future<Stream<String>> generateChatResponseStream({
     required String prompt,
     List<Map<String, dynamic>> history = const [],

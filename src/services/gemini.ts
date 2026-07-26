@@ -34,6 +34,7 @@ export function createChat(
   tools: any[] = [],
   userContext = "",
   responseStyle = "",
+  modelOverride?: string,
 ) {
   if (!ai) throw new Error("API key not configured");
 
@@ -52,7 +53,7 @@ export function createChat(
     config.tools = [{ functionDeclarations: tools }, { googleSearch: {} }];
   }
   return ai.chats.create({
-    model: models.chat,
+    model: modelOverride || models.chat,
     config,
   });
 }
@@ -65,10 +66,11 @@ export async function* generateChatResponseStream(
   userContext = "",
   responseStyle = "",
   tools: any[] = [],
+  modelOverride?: string,
 ) {
   if (!ai) throw new Error("API key not configured");
 
-  const chat = createChat(SYSTEM_PROMPT, tools, userContext, responseStyle);
+  const chat = createChat(SYSTEM_PROMPT, tools, userContext, responseStyle, modelOverride);
   let message: string | import("@google/genai").Part[] = prompt;
 
   while (true) {

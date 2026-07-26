@@ -36,13 +36,15 @@ import {
 } from "lucide-react";
 import {
   generateChatResponse,
+  generateChatResponseStream as geminiChatStream,
   analyzeImage,
   textToSpeech,
   transcribeAudio,
   connectLive,
   editImage,
+  models as geminiModels,
 } from "../services/gemini";
-import { generateChatResponseStream } from "../services/ollama";
+import { generateChatResponseStream as ollamaChatStream } from "../services/ollama";
 import { generateImage } from "../services/flux";
 import { tools, executeTool } from "../services/tools";
 import {
@@ -72,7 +74,7 @@ interface Message {
   originalPrompt?: string;
 }
 
-type ViewState = "home" | "chat";
+type ViewState = "home" | "chat" | "models";
 
 const CodeBlock = ({ className, children, ...props }: any) => {
   const match = /language-(\w+)/.exec(className || "");
@@ -208,6 +210,8 @@ export default function App() {
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const [ollamaModel, setOllamaModel] = useState("");
   const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+  const [activeProvider, setActiveProvider] = useState<"gemini" | "ollama">("gemini");
+  const [geminiModel, setGeminiModel] = useState(geminiModels.chat);
 
   useEffect(() => {
     const savedUserContext = localStorage.getItem("eburon_userContext");
@@ -216,10 +220,14 @@ export default function App() {
       (localStorage.getItem("eburon_theme") as "light" | "dark" | "system") ||
       "system";
     const savedOllamaModel = localStorage.getItem("eburon_ollamaModel");
+    const savedProvider = localStorage.getItem("eburon_activeProvider") as "gemini" | "ollama" | null;
+    const savedGeminiModel = localStorage.getItem("eburon_geminiModel");
     if (savedUserContext) setUserContext(savedUserContext);
     if (savedResponseStyle) setResponseStyle(savedResponseStyle);
     setTheme(savedTheme);
     if (savedOllamaModel) setOllamaModel(savedOllamaModel);
+    if (savedProvider) setActiveProvider(savedProvider);
+    if (savedGeminiModel) setGeminiModel(savedGeminiModel);
 
     loadDeviceProfile().then((profile) => {
       if (!profile) return;
@@ -287,6 +295,8 @@ export default function App() {
     localStorage.setItem("eburon_responseStyle", responseStyle);
     localStorage.setItem("eburon_theme", theme);
     localStorage.setItem("eburon_ollamaModel", ollamaModel);
+    localStorage.setItem("eburon_activeProvider", activeProvider);
+    localStorage.setItem("eburon_geminiModel", geminiModel);
     saveDeviceProfile({
       user_context: userContext,
       response_style: responseStyle,
@@ -902,16 +912,27 @@ export default function App() {
         let groundingMetadata = null;
 
         try {
-          const stream = generateChatResponseStream(
-            textToSend,
-            history,
-            isThinking,
-            isFastMode,
-            getFullUserContext(),
-            responseStyle,
-            [],
-            ollamaModel || undefined,
-          );
+          const stream = activeProvider === "gemini"
+            ? geminiChatStream(
+                textToSend,
+                history,
+                isThinking,
+                isFastMode,
+                getFullUserContext(),
+                responseStyle,
+                [],
+                geminiModel || undefined,
+              )
+            : ollamaChatStream(
+                textToSend,
+                history,
+                isThinking,
+                isFastMode,
+                getFullUserContext(),
+                responseStyle,
+                [],
+                ollamaModel || undefined,
+              );
           for await (const chunk of stream) {
             fullText += chunk.text || "";
             if (chunk.groundingMetadata) {

@@ -676,6 +676,47 @@ class _BeatriceHomeState extends State<BeatriceHome>
         setState(() {
           _messages.last = _messages.last.copyWith(text: localPlan);
         });
+      } else if (_ollamaProvider == 'gemini') {
+        final systemParts = [
+          _userContext,
+          if (_memories.isNotEmpty)
+            _memoryService.buildMemoryContext(_memories),
+          if (_conversationContext.isNotEmpty) _conversationContext,
+        ].where((value) => value.isNotEmpty).join('\n\n');
+        final response = await _gemini.generateChatText(
+          prompt: text,
+          history: history,
+          userContext: systemParts,
+          responseStyle: _effectiveResponseStyle,
+        );
+        fullText.write(response);
+        setState(() {
+          _messages.last = _messages.last.copyWith(text: response);
+          _pendingVisionImage = null;
+          _pendingVisionImageName = null;
+        });
+      } else if (_ollamaProvider == 'groq') {
+        _groqPlanner.configure(providerId: MobilePlannerProviders.groq);
+        final systemParts = [
+          _userContext,
+          if (_memories.isNotEmpty)
+            _memoryService.buildMemoryContext(_memories),
+          if (_conversationContext.isNotEmpty) _conversationContext,
+        ].where((value) => value.isNotEmpty).join('\n\n');
+        final response = await _groqPlanner.generateChatText(
+          prompt: text,
+          model: _groqPlannerModel.isNotEmpty
+              ? _groqPlannerModel
+              : 'llama-3.3-70b-versatile',
+          systemInstruction: systemParts,
+          history: history,
+        );
+        fullText.write(response);
+        setState(() {
+          _messages.last = _messages.last.copyWith(text: response);
+          _pendingVisionImage = null;
+          _pendingVisionImageName = null;
+        });
       } else {
         if (_ollamaModel.isEmpty) {
           throw Exception(

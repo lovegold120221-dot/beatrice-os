@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:beatrice/data/services/live_api_service.dart';
-import 'package:beatrice/data/services/mobile_planner_provider.dart';
 import 'package:beatrice/data/services/ollama_service.dart';
 import 'package:beatrice/data/services/opencode_service.dart';
 import 'package:beatrice/ui/core/theme.dart';

@@ -81,6 +81,28 @@ class HostedPlannerService {
     }
   }
 
+  Future<String> generateChatText({
+    required String prompt,
+    required String model,
+    String systemInstruction = '',
+    List<Map<String, dynamic>> history = const [],
+    Duration? requestTimeout,
+  }) async {
+    final key = apiKey.trim();
+    if (key.isEmpty) {
+      throw StateError('${_providerLabel(providerId)} API key is missing.');
+    }
+    final selectedModel = model.trim();
+    if (selectedModel.isEmpty) {
+      throw StateError('${_providerLabel(providerId)} model is not selected.');
+    }
+    return providerId == MobilePlannerProviders.gemini
+        ? _chatGemini(prompt, selectedModel, key, systemInstruction, history,
+            requestTimeout)
+        : _chatGroq(prompt, selectedModel, key, systemInstruction, history,
+            requestTimeout);
+  }
+
   Future<String> generatePlannerCommand({
     required String prompt,
     required String model,
@@ -136,6 +158,110 @@ class HostedPlannerService {
     }
     final sorted = models.toList()..sort();
     return sorted;
+  }
+
+  Future<String> _chatGemini(
+    String prompt,
+    String model,
+    String key,
+    String systemInstruction,
+    List<Map<String, dynamic>> history,
+    Duration? requestTimeout,
+  ) async {
+    final uri = Uri.parse(
+      '$_geminiBaseUrl/models/${Uri.encodeComponent(model)}:generateContent',
+    ).replace(queryParameters: {'key': key});
+    final contents = <Map<String, dynamic>>[];
+    for (final m in history) {
+      contents.add({
+        'role': m['role'],
+        'parts': [
+          {'text': m['parts']?[0]?['text'] ?? ''},
+        ],
+      });
+    }
+    contents.add({
+      'role': 'user',
+      'parts': [
+        {'text': prompt},
+      ],
+    });
+    final body = <String, dynamic>{
+      'contents': contents,
+    };
+    if (systemInstruction.isNotEmpty) {
+      body['systemInstruction'] = {
+        'parts': [{'text': systemInstruction}],
+      };
+    }
+    final response = await _client
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(requestTimeout ?? timeout);
+    final resBody = _decodeObject(response);
+    _throwForStatus(response, resBody, 'Gemini chat');
+    final candidates = resBody['candidates'] as List? ?? const [];
+    if (candidates.isEmpty || candidates.first is! Map) {
+      throw StateError('Gemini returned no candidate.');
+    }
+    final content = (candidates.first as Map)['content'];
+    final parts = content is Map
+        ? content['parts'] as List? ?? const []
+        : const [];
+    return parts
+        .whereType<Map>()
+        .map((part) => part['text']?.toString() ?? '')
+        .join()
+        .trim();
+  }
+
+  Future<String> _chatGroq(
+    String prompt,
+    String model,
+    String key,
+    String systemInstruction,
+    List<Map<String, dynamic>> history,
+    Duration? requestTimeout,
+  ) async {
+    final messages = <Map<String, dynamic>>[];
+    if (systemInstruction.isNotEmpty) {
+      messages.add({'role': 'system', 'content': systemInstruction});
+    }
+    for (final m in history) {
+      messages.add({
+        'role': m['role'] == 'model' ? 'assistant' : m['role'],
+        'content': m['parts']?[0]?['text'] ?? '',
+      });
+    }
+    messages.add({'role': 'user', 'content': prompt});
+    final response = await _client
+        .post(
+          Uri.parse('$_groqBaseUrl/chat/completions'),
+          headers: {
+            'Authorization': 'Bearer $key',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': messages,
+            'temperature': 0.7,
+            'stream': false,
+          }),
+        )
+        .timeout(requestTimeout ?? timeout);
+    final body = _decodeObject(response);
+    _throwForStatus(response, body, 'Groq chat');
+    final choices = body['choices'] as List? ?? const [];
+    if (choices.isEmpty || choices.first is! Map) {
+      throw StateError('Groq returned no choice.');
+    }
+    final message = (choices.first as Map)['message'];
+    return message is Map
+        ? message['content']?.toString().trim() ?? ''
+        : '';
   }
 
   Future<String> _generateGemini(
