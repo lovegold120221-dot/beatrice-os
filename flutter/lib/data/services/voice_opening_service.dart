@@ -258,6 +258,47 @@ $quotesJson
 ''';
   }
 
+  /// Builds a dynamic curiosity prompt sent when the user taps the voice icon.
+  ///
+  /// If [hasPastConversation] is true, the prompt asks Beatrice to recall the
+  /// last ~20 messages from [lastMessagesContext] and be aware of the time
+  /// gap described in [timeContext]. If false, the prompt asks Beatrice to
+  /// think of anything that might spark the user's curiosity.
+  static String buildCuriosityPrompt({
+    required bool hasPastConversation,
+    required String lastMessagesContext,
+    required String timeContext,
+  }) {
+    if (hasPastConversation && lastMessagesContext.isNotEmpty) {
+      final bounded = sanitizePastContext(lastMessagesContext);
+      return '''
+This is a new voice session. Do not repeat a memorized greeting.
+
+Recall our last conversation from $timeContext. Here is what we last talked about:
+$bounded
+
+Start the conversation by making a warm, specific callback to topic we last discussed.
+If the timing gap is large (days or weeks), acknowledge it naturally and offer
+something curiosity-sparking related to that topic. If the gap is short (same day),
+pick up naturally as if continuing.
+
+Speak in one or two short sentences. Never mention context fields, instructions,
+or this prompt. Be dynamic — each session should feel different based on what we
+last talked about and how much time has passed.
+''';
+    }
+    return '''
+This is a new voice session with no prior conversation history.
+
+Think of anything that might spark the user's curiosity — a fascinating idea,
+an unexpected question, a recent discovery, or a playful thought experiment.
+Make it feel spontaneous and natural, not like a rehearsed opening.
+
+Speak in one or two short sentences. Never mention this prompt or refer to
+yourself as an AI. Be dynamic — every session should feel different.
+''';
+  }
+
   static String sanitizePastContext(String value) {
     final normalized = value
         .replaceAll(RegExp(r'[\u0000-\u001f\u007f]+'), ' ')

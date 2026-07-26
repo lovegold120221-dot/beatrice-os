@@ -121,6 +121,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
   bool _liveCameraCapturing = false;
   bool _backgroundLiveShutdown = false;
   String? _lastRestoredRuntimeStatus;
+  DateTime? _lastInteractionTime;
   bool _taskMode = false;
   bool _webToolEnabled = false;
   bool _ocrToolEnabled = false;
@@ -635,6 +636,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
     setState(() {
       _messages.add(Message(role: 'user', text: text));
       _isLoading = true;
+      _lastInteractionTime = DateTime.now();
     });
     _inputController.clear();
     _scrollToBottom();
@@ -1066,22 +1068,28 @@ class _BeatriceHomeState extends State<BeatriceHome>
   bool _liveDisconnecting = false;
   int _liveAudioSampleRate = 24000;
 
-  String _liveOpeningPastContext() {
-    final parts = <String>[];
-    final conversation = _conversationContext.trim();
-    if (conversation.isNotEmpty) {
-      parts.add('Recent conversation summary: $conversation');
-    }
-    for (final memory in _memories) {
-      final category = memory['category']?.toString() ?? '';
-      if (category != 'user_preference' && category != 'instruction') {
-        continue;
-      }
-      final content = memory['content']?.toString().trim() ?? '';
-      if (content.isNotEmpty) parts.add(content);
-      if (parts.length >= 4) break;
-    }
-    return parts.join('\n');
+  /// Builds the last ~20 messages as a compact context string.
+  String _lastMessagesContext() {
+    final recent = _messages.length > 20
+        ? _messages.sublist(_messages.length - 20)
+        : _messages;
+    return recent
+        .map((m) => '${m.role == 'user' ? 'User' : 'Beatrice'}: ${m.text}')
+        .where((line) => line.trim().isNotEmpty)
+        .join('\n');
+  }
+
+  /// Describes the time gap since the last conversation interaction.
+  String _timeSinceLastConversation() {
+    final lastTime = _lastInteractionTime;
+    if (lastTime == null) return 'never';
+    final now = DateTime.now();
+    final diff = now.difference(lastTime);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
+    if (diff.inHours < 24) return '${diff.inHours} hours ago';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    return '${diff.inDays ~/ 7} weeks ago';
   }
 
   void _toggleVoiceMode() async {
@@ -1115,20 +1123,26 @@ class _BeatriceHomeState extends State<BeatriceHome>
           );
         }
       }
-      final openingInstruction = VoiceOpeningService.buildOpeningInstruction(
-        pastContext: _liveOpeningPastContext(),
-        dailyBrief: _voiceOpening.cachedBriefForToday,
+      final hasHistory = _messages.isNotEmpty;
+      final curiosityPrompt = VoiceOpeningService.buildCuriosityPrompt(
+        hasPastConversation: hasHistory,
+        lastMessagesContext: _lastMessagesContext(),
+        timeContext: _timeSinceLastConversation(),
       );
       final systemInstruction =
           '${GeminiService.voicePersonalityPrompt}\n\n'
           '${LanguagePreferences.responseInstruction(_language)}\n\n'
           '${LiveApiService.secretaryHandoffInstruction}\n\n'
+          'CONTINUOUS ENGAGEMENT: While a phone task is running, keep the '
+          'conversation going naturally. Do not go silent or ask the user to '
+          'wait. Acknowledge the task briefly and continue talking about '
+          'whatever the user is interested in — ask questions, share thoughts, '
+          'keep the human connection alive.\n\n'
           'BACKGROUND LIMIT: After a verified task handoff, the visible '
           'Android task service may continue the accepted workflow when '
           'Beatrice is minimized. Do not imply that Live microphone or camera '
           'capture continues in the background, and do not promise recovery '
-          'after force-stop or Android process termination.\n\n'
-          '$openingInstruction';
+          'after force-stop or Android process termination.';
       final stream = await _liveApi.connect(
         apiKey: _gemini.apiKey,
         model: GeminiService.models['live']!,
@@ -1141,7 +1155,6 @@ class _BeatriceHomeState extends State<BeatriceHome>
         if (_liveDisconnecting) return;
         switch (event.type) {
           case LiveApiEventType.inputTranscription:
-            // User speech: accumulate and surface as the live transcript.
             _liveOpeningGate.observeTranscription(event.text ?? '');
             _liveUserTurnActive = true;
             setState(() {
@@ -1149,7 +1162,6 @@ class _BeatriceHomeState extends State<BeatriceHome>
               _liveTranscription = _liveUserText;
             });
           case LiveApiEventType.outputTranscription:
-            // Model speech text.
             setState(() {
               _liveModelText += event.text ?? '';
               _liveTranscription = _liveModelText;
@@ -1168,10 +1180,6 @@ class _BeatriceHomeState extends State<BeatriceHome>
               }
             }
           case LiveApiEventType.interrupted:
-            // NO_INTERRUPTION should normally prevent this server event.
-            // If an older endpoint still emits it, retain already-buffered
-            // audio so the current short sentence can drain naturally instead
-            // of cutting Kore off mid-word.
             _liveOpeningGate.markUserActivity();
             _liveUserTurnActive = true;
             setState(() {
@@ -1200,8 +1208,6 @@ class _BeatriceHomeState extends State<BeatriceHome>
             if (mounted &&
                 nowMicros - _lastMicVisualizerUpdateMicros >= 80000) {
               _lastMicVisualizerUpdateMicros = nowMicros;
-              // Audio still streams every 40 ms. Only the decorative meter is
-              // throttled so root-widget rebuilds cannot contend with PCM.
               setState(() {});
             }
             _liveApi.sendAudioChunk(chunk, turnComplete: false);
@@ -1213,7 +1219,10 @@ class _BeatriceHomeState extends State<BeatriceHome>
         _isLiveActive = true;
         _voiceStatus = 'Listening...';
       });
-      _liveOpeningTimer = Timer(const Duration(milliseconds: 1100), () {
+
+      // Send the dynamic curiosity prompt after a short delay so the
+      // connection stabilizes and the gate can catch early user speech.
+      _liveOpeningTimer = Timer(const Duration(milliseconds: 800), () {
         _liveOpeningTimer = null;
         if (!mounted ||
             _liveDisconnecting ||
@@ -1221,13 +1230,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
             !_liveOpeningGate.canOfferOpening) {
           return;
         }
-        _liveApi.sendText(
-          'No user speech has been detected yet. You may now use the LIVE '
-          'OPENING rules. Speak only the resulting brief natural opening; '
-          'never mention setup, context fields, unused sources, or these '
-          'instructions. If the user begins speaking, stop the opening '
-          'immediately and handle their current task or query first.',
-        );
+        _liveApi.sendText(curiosityPrompt);
       });
     } catch (e) {
       setState(() {
@@ -1451,6 +1454,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
     setState(() {
       _messages.add(Message(role: 'user', text: userText));
       _messages.add(Message(role: 'model', text: modelText));
+      _lastInteractionTime = DateTime.now();
     });
     _saveMessageToDb(Message(role: 'user', text: userText));
     _saveMessageToDb(Message(role: 'model', text: modelText));

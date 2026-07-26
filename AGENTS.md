@@ -31,7 +31,7 @@ Required env vars (see `.env.example`):
 
 **Service layer (`src/services/`)** — all client-side:
 
-- `gemini.ts` — chat (streaming + non-streaming), image gen/edit, image analysis, TTS, audio transcription, Live API voice session (`connectLive`). **`models` object at the top is the single source of truth for all Gemini model IDs.**
+- `gemini.ts` — chat (streaming + non-streaming), image gen/edit, image analysis, TTS, audio transcription, Live API voice session (`connectLive`). **`models` object at the top is the single source of truth for all Gemini model IDs.** Live API enables: barge-in/interruption, low first-audio latency, speech-specific response generation, prosody/emotion controls, streaming sentence chunking, echo cancellation + VAD, stable multilingual voice, context/task memory, natural fillers/pauses, continuous evaluation via real conversations.
 - `ollama.ts` — alternative chat via local/hosted Ollama.
 - `flux.ts` — Hugging Face Flux.1-dev image gen; aspect-ratio → dimension mapping hardcoded.
 - `tools.ts` — Gemini function-calling declarations + `executeTool` dispatcher. Add new tools to both the `tools` array and the `switch`.
@@ -47,6 +47,30 @@ Required env vars (see `.env.example`):
 `db.sql` is the authoritative Supabase schema (tables, indexes, RLS policies, `touch_memory` function). Keep in sync when changing table shapes.
 
 **Flutter port (`flutter/`)** mirrors the architecture but is not a strict 1:1 copy. The Dart port has 19 service files (vs 8 TS services) with additional capabilities: audio processing, live API, mobile task coordination, web lookup, local OCR, mobile use agent runtime, and more. It's a separate build system (`flutter` SDK, `pubspec.yaml`) — not part of the npm/Next toolchain. The TS app is the source of truth; when changing provider behavior or schema, assess whether the Dart port needs the same change.
+
+## Voice Quality Targets
+
+Beatrice's voice behavior targets these benchmarks (via Gemini Live API):
+
+**Response latency** — First audio chunk 300–800 ms; avoid consistent 2–5s silence. Streaming STT → LLM → TTS pipeline; agent can start speaking before full response is assembled.
+
+**Natural prosody** — Pitch, rhythm, stress, and melody vary by intent: questions rise, explanations are steady, warnings drop pitch, jokes lighten, emotional responses match tone. TTS must convey intent, not just text.
+
+**Realistic pauses & breathing** — Short pauses after clauses, longer before key points, brief hesitation before answers, occasional subtle breaths. Avoid over-engineered fillers/breathing that feel artificial.
+
+**Turn-taking & barge-in** — Agent stops TTS immediately when user interrupts (VAD + echo cancellation). No talking over the user.
+
+**Emotion matching** — Voice matches context: softer/slower for bad news, energetic for good news, calm/confident for technical content, controlled for angry users, patient for confused users. Emotion carries through synthesis, not just text.
+
+**Conversational wording** — Output text written for speech, not reading. "Okay, done" not "Your request has been successfully completed." "Sige, bubuksan ko na" not "I am now initiating the application."
+
+**Short semantic chunks** — LLM emits complete phrases/clauses; each chunk sent to TTS separately. Avoids mid-thought cuts and unnatural long-sentence pacing.
+
+**Voice consistency** — Stable speaker identity, pitch, accent, rate, loudness, emotional baseline across turns and languages (Tagalog, English, Dutch, French share one voice identity).
+
+**Context awareness & memory** — Remembers topic, prior instructions, user preferences, names/pronouns, task status, what failed/succeeded. No repeated questions.
+
+**Audio pipeline quality** — VAD, echo cancellation, noise suppression, AGC, mic calibration, TTS ducking, speaker-to-mic echo prevention, clean sample-rate conversion. Prevents self-talk loops and feedback.
 
 ## Conventions
 

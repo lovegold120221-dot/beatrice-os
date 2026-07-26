@@ -482,6 +482,19 @@ export default function App() {
     }
   };
 
+  const buildCuriosityPrompt = () => {
+    const hasHistory = messages.length > 0;
+    if (hasHistory) {
+      const recent = messages.slice(-20);
+      const context = recent
+        .map((m) => `${m.role === "user" ? "User" : "Beatrice"}: ${m.text}`)
+        .filter(Boolean)
+        .join("\n");
+      return `This is a new voice session. Recall our last conversation. Here is what we last talked about:\n${context}\n\nStart by making a warm, specific callback to that topic. Be dynamic — each session should feel different.`;
+    }
+    return `This is a new voice session with no prior conversation. Think of anything that might spark the user's curiosity — a fascinating idea, an unexpected question, or a playful thought experiment. Make it spontaneous and natural.`;
+  };
+
   const startLiveSession = async () => {
     try {
       if (window.aistudio) {
@@ -593,6 +606,7 @@ export default function App() {
         },
         getFullUserContext(),
         responseStyle,
+        buildCuriosityPrompt(),
       );
 
       liveSessionRef.current = await sessionPromise;

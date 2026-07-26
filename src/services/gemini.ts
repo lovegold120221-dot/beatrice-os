@@ -278,6 +278,7 @@ export function connectLive(
   onclose: () => void,
   userContext = "",
   responseStyle = "",
+  curiosityPrompt?: string,
 ) {
   if (!ai) throw new Error("API key not configured");
 
@@ -288,11 +289,19 @@ export function connectLive(
   if (responseStyle) {
     finalSystemPrompt += `\n\nResponse Style (How you should respond):\n${responseStyle}`;
   }
+  finalSystemPrompt += `\n\nCONTINUOUS ENGAGEMENT: Keep the conversation going naturally. Do not go silent. Acknowledge tasks briefly and continue talking about whatever the user is interested in.`;
 
   const sessionPromise = ai.live.connect({
     model: models.live,
     callbacks: {
-      onopen: () => onopen(sessionPromise),
+      onopen: () => {
+        onopen(sessionPromise);
+        if (curiosityPrompt) {
+          sessionPromise.then((session: any) => {
+            session.sendClientContent({ turns: [{ role: "user", parts: [{ text: curiosityPrompt }] }], turnComplete: true });
+          });
+        }
+      },
       onmessage,
       onerror,
       onclose,
