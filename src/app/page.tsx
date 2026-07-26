@@ -1334,6 +1334,88 @@ export default function App() {
                   <p className="text-xs text-neutral-500 italic"></p>
                 </div>
               </motion.main>
+            ) : view === "models" ? (
+              <motion.main
+                key="models"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 overflow-y-auto hide-scrollbar pt-28 pb-24 px-4 z-10"
+              >
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-white mb-4">AI Provider</h2>
+                    <div className="flex bg-[#212121] p-1 rounded-xl border border-neutral-800">
+                      <button
+                        onClick={() => setActiveProvider("gemini")}
+                        className={`flex-1 py-2.5 text-sm rounded-lg transition-colors ${activeProvider === "gemini" ? "bg-white text-black font-medium" : "text-neutral-400 hover:text-white"}`}
+                      >
+                        Gemini
+                      </button>
+                      <button
+                        onClick={() => setActiveProvider("ollama")}
+                        className={`flex-1 py-2.5 text-sm rounded-lg transition-colors ${activeProvider === "ollama" ? "bg-white text-black font-medium" : "text-neutral-400 hover:text-white"}`}
+                      >
+                        Ollama
+                      </button>
+                    </div>
+                  </div>
+
+                  {activeProvider === "gemini" && (
+                    <div>
+                      <h3 className="text-sm font-medium text-white mb-3">Gemini Model</h3>
+                      <div className="space-y-2">
+                        {Object.entries(geminiModels).map(([key, id]) => (
+                          <button
+                            key={key}
+                            onClick={() => setGeminiModel(id)}
+                            className={`w-full text-left px-4 py-3 rounded-xl text-sm transition-colors border ${geminiModel === id ? "bg-white/10 border-white/20 text-white" : "bg-[#212121] border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600"}`}
+                          >
+                            <span className="font-medium capitalize">{key}</span>
+                            <span className="block text-xs text-neutral-500 mt-0.5 font-mono">{id}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeProvider === "ollama" && (
+                    <div>
+                      <h3 className="text-sm font-medium text-white mb-3">Ollama Model</h3>
+                      <input
+                        type="text"
+                        value={ollamaModel}
+                        onChange={(e) => setOllamaModel(e.target.value)}
+                        placeholder="e.g. llama3.2, codemax-beta:latest, mistral"
+                        className="w-full bg-[#212121] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-neutral-600 mb-3"
+                      />
+                      <div className="flex flex-wrap gap-2">
+                        {ollamaModels.length > 0 ? (
+                          ollamaModels.map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => setOllamaModel(m)}
+                              className={`px-3 py-1.5 text-xs rounded-lg ${ollamaModel === m ? "bg-white text-black font-medium" : "bg-[#212121] text-neutral-400 hover:text-white border border-neutral-800"}`}
+                            >
+                              {m}
+                            </button>
+                          ))
+                        ) : (
+                          <p className="text-xs text-neutral-500">No Ollama models found. Make sure Ollama is running.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-neutral-800">
+                    <p className="text-xs text-neutral-500">
+                      {activeProvider === "gemini"
+                        ? `Using Gemini: ${geminiModel}`
+                        : `Using Ollama: ${ollamaModel || "default"}`}
+                    </p>
+                  </div>
+                </div>
+              </motion.main>
             ) : (
               <motion.main
                 key="chat"
