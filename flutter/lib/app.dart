@@ -532,6 +532,12 @@ class _BeatriceHomeState extends State<BeatriceHome>
 
   Future<void> _changeOllamaProvider(String provider) async {
     if (provider == _ollamaProvider) return;
+    if (provider == 'gemini' || provider == 'groq') {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() => _ollamaProvider = provider);
+      await prefs.setString('eburon_ollamaProvider', provider);
+      return;
+    }
     setState(() {
       _ollamaProvider = provider;
       _ollamaModel = provider == 'cloud'
@@ -541,6 +547,10 @@ class _BeatriceHomeState extends State<BeatriceHome>
     _configureSelectedOllama();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('eburon_ollamaProvider', provider);
+  }
+
+  void _changeAssistantName(String name) {
+    setState(() => _assistantName = name);
   }
 
   Future<void> _changeVoice(String voiceApiName) async {
@@ -2543,6 +2553,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
                         language: _language,
                         theme: _theme,
                         voiceName: _voiceName,
+                        assistantName: _assistantName,
                         ollamaModel: _ollamaModel,
                         ollamaBaseUrl: _ollamaBaseUrl,
                         ollamaProvider: _ollamaProvider,
@@ -2562,6 +2573,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
                           () => _language = LanguagePreferences.normalize(v),
                         ),
                         onVoiceChanged: (v) => _changeVoice(v),
+                        onAssistantNameChanged: (v) => _changeAssistantName(v),
                         onOllamaModelChanged: (v) =>
                             unawaited(_changeSelectedOllamaModel(v)),
                         onOllamaBaseUrlChanged: (v) {
