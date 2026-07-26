@@ -163,6 +163,7 @@ SEAMLESS SECRETARY BEHAVIOR
     int clientSampleRate = 16000,
     int serverSampleRate = 24000,
     bool? enableAffectiveDialog,
+    bool? enableProactiveAudio,
   }) async {
     _disconnecting = false;
     _eventController?.close();
@@ -172,6 +173,8 @@ SEAMLESS SECRETARY BEHAVIOR
 
     final useAffectiveDialog =
         enableAffectiveDialog ?? supportsAffectiveDialog(model);
+    final useProactiveAudio =
+        (enableProactiveAudio ?? false) && supportsProactiveAudio(model);
     final apiVersion = useAffectiveDialog
         ? _affectiveApiVersion
         : _stableApiVersion;
@@ -213,6 +216,7 @@ SEAMLESS SECRETARY BEHAVIOR
           clientSampleRate,
           serverSampleRate,
           enableAffectiveDialog: useAffectiveDialog,
+          enableProactiveAudio: useProactiveAudio,
           languageCode: languageCode,
         ),
       ),
@@ -233,6 +237,16 @@ SEAMLESS SECRETARY BEHAVIOR
         normalized.contains('native-audio');
   }
 
+  // Proactive Audio (Preview) is only available on the native-audio Live
+  // models. When enabled, the model only responds to device-directed queries
+  // and stays silent for ambient/non-directed speech. Opt-in because it
+  // materially changes responsiveness.
+  static bool supportsProactiveAudio(String model) {
+    final normalized = model.toLowerCase();
+    return normalized.contains('gemini-2.5') &&
+        normalized.contains('native-audio');
+  }
+
   static bool supportsThinkingBudget(String model) {
     return model.toLowerCase().contains('gemini-2.5');
   }
@@ -244,6 +258,7 @@ SEAMLESS SECRETARY BEHAVIOR
     int clientSampleRate,
     int serverSampleRate, {
     required bool enableAffectiveDialog,
+    bool enableProactiveAudio = false,
     String? languageCode,
   }) {
     final transcriptionConfig = <String, dynamic>{};
@@ -256,6 +271,8 @@ SEAMLESS SECRETARY BEHAVIOR
         'generationConfig': {
           'responseModalities': ['AUDIO'],
           if (enableAffectiveDialog) 'enableAffectiveDialog': true,
+          if (enableProactiveAudio)
+            'proactiveAudio': {'enabled': true},
           if (supportsThinkingBudget(model))
             'thinkingConfig': {
               // Gemini 2.5 Live uses dynamic thinking by default. Voice turns

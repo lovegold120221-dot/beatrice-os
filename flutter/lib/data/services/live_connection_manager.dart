@@ -44,6 +44,7 @@ class LiveConnectionManager {
         voiceName: voiceName, languageCode: languageCode,
         clientSampleRate: clientSampleRate, serverSampleRate: serverSampleRate,
         enableAffectiveDialog: enableAffectiveDialog,
+        enableProactiveAudio: enableProactiveAudio,
       );
     } catch (e) {
       lastError = e;
@@ -66,6 +67,7 @@ class LiveConnectionManager {
             voiceName: voiceName, languageCode: languageCode,
             clientSampleRate: clientSampleRate, serverSampleRate: serverSampleRate,
             enableAffectiveDialog: enableAffectiveDialog,
+            enableProactiveAudio: enableProactiveAudio,
           );
           break;
         } catch (e) {

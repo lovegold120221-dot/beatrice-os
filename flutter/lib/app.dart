@@ -151,6 +151,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
   String _openCodeUrl = 'http://127.0.0.1:4096';
   String _voiceName = LiveApiService.koreVoiceName;
   String _assistantName = '';
+  bool _proactiveAudio = false;
 
   String? _currentChatId;
   List<Map<String, dynamic>> _chatHistory = [];
@@ -262,6 +263,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _taskMode = prefs.getBool('eburon_chatTaskMode') ?? false;
       _voiceName = prefs.getString('eburon_voiceName') ??
           LiveApiService.koreVoiceName;
+      _proactiveAudio = prefs.getBool('eburon_proactiveAudio') ?? false;
     });
     _geminiPlanner.configure(apiKey: _geminiPlannerApiKey);
     _groqPlanner.configure(apiKey: _groqPlannerApiKey);
@@ -558,6 +560,12 @@ class _BeatriceHomeState extends State<BeatriceHome>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('eburon_voiceName', voiceApiName);
     if (mounted) setState(() => _voiceName = voiceApiName);
+  }
+
+  Future<void> _changeProactiveAudio(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('eburon_proactiveAudio', enabled);
+    if (mounted) setState(() => _proactiveAudio = enabled);
   }
 
   Future<void> _changeOllamaCloudKey(String key) async {
@@ -1148,6 +1156,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
         model: GeminiService.models['live']!,
         systemInstruction: systemInstruction,
         voiceName: _voiceName,
+        enableProactiveAudio: _proactiveAudio,
       );
       unawaited(_audioService.prepareLivePlayback());
 
@@ -2598,6 +2607,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
                         language: _language,
                         theme: _theme,
                         voiceName: _voiceName,
+                        proactiveAudio: _proactiveAudio,
                         assistantName: _assistantName,
                         ollamaModel: _ollamaModel,
                         ollamaBaseUrl: _ollamaBaseUrl,
@@ -2618,6 +2628,8 @@ class _BeatriceHomeState extends State<BeatriceHome>
                           () => _language = LanguagePreferences.normalize(v),
                         ),
                         onVoiceChanged: (v) => _changeVoice(v),
+                        onProactiveAudioChanged: (v) =>
+                            unawaited(_changeProactiveAudio(v)),
                         onAssistantNameChanged: (v) => _changeAssistantName(v),
                         onOllamaModelChanged: (v) =>
                             unawaited(_changeSelectedOllamaModel(v)),

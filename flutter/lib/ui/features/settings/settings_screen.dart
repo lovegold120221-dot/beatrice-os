@@ -11,6 +11,7 @@ class SettingsScreen extends StatefulWidget {
   final String language;
   final String theme;
   final String voiceName;
+  final bool proactiveAudio;
   final String assistantName;
   final String ollamaModel;
   final String ollamaBaseUrl;
@@ -24,6 +25,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<String> onResponseStyleChanged;
   final ValueChanged<String> onLanguageChanged;
   final ValueChanged<String> onVoiceChanged;
+  final ValueChanged<bool> onProactiveAudioChanged;
   final ValueChanged<String> onAssistantNameChanged;
   final ValueChanged<String> onOllamaModelChanged;
   final ValueChanged<String> onOllamaBaseUrlChanged;
@@ -39,6 +41,7 @@ class SettingsScreen extends StatefulWidget {
     required this.language,
     required this.theme,
     required this.voiceName,
+    required this.proactiveAudio,
     required this.assistantName,
     required this.ollamaModel,
     required this.ollamaBaseUrl,
@@ -52,6 +55,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onResponseStyleChanged,
     required this.onLanguageChanged,
     required this.onVoiceChanged,
+    required this.onProactiveAudioChanged,
     required this.onAssistantNameChanged,
     required this.onOllamaModelChanged,
     required this.onOllamaBaseUrlChanged,
@@ -287,6 +291,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               }
             },
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Proactive Audio'),
+            subtitle: const Text(
+              'Native-audio only. Beatrice responds only to speech directed '
+              'at her and ignores ambient conversation. Preview feature.',
+              style: TextStyle(color: AppColors.neutral500, fontSize: 11),
+            ),
+            value: widget.proactiveAudio,
+            onChanged: widget.onProactiveAudioChanged,
           ),
           const SizedBox(height: 24),
           _label('Chat provider'),
