@@ -1277,7 +1277,7 @@ export default function App() {
                   <div className="relative w-full h-full">
                     <Image
                       src="https://eburon.ai/icon-eburon.svg"
-                      alt="Eburon AI Logo"
+                      alt="Beatrice OS Logo"
                       fill
                       className="object-contain"
                       referrerPolicy="no-referrer"
@@ -1285,7 +1285,7 @@ export default function App() {
                   </div>
                 </div>
                 <h1 className="text-[28px] font-bold tracking-tight text-white mb-2">
-                  Eburon AI
+                  Beatrice OS
                 </h1>
                 <p className="text-sm font-medium text-neutral-400 mb-6">
                   The Future of Intelligence
@@ -1838,7 +1838,7 @@ export default function App() {
                         referrerPolicy="no-referrer"
                       />
                     </div>
-                    <span className="font-semibold text-lg">Eburon AI</span>
+                    <span className="font-semibold text-lg">Beatrice OS</span>
                   </div>
                   <button
                     onClick={() => setIsSidebarOpen(false)}

@@ -1,6 +1,6 @@
 # Beatrice — Flutter
 
-Mobile port of the Beatrice AI voice/chat assistant by Eburon AI. Conversational AI with voice mode, mobile-use agent orchestration, and multi-provider support (Gemini, Ollama, Groq, OpenAI, Claude, DeepSeek, Qwen, and more).
+Mobile port of the Beatrice AI voice/chat assistant by Beatrice OS. Conversational AI with voice mode, mobile-use agent orchestration, and multi-provider support (Gemini, Ollama, Groq, OpenAI, Claude, DeepSeek, Qwen, and more).
 
 ## Features
 
@@ -13,12 +13,12 @@ Mobile port of the Beatrice AI voice/chat assistant by Eburon AI. Conversational
 
 Providers appear in the UI as planet aliases:
 
-| Provider        | Alias        |
-| --------------- | ------------ |
-| Gemini          | Eburon       |
-| Groq            | Eburon-OS    |
-| Ollama (cloud)  | Eburon-cloud |
-| Ollama (local)  | Eburon-local |
+| Provider       | Alias        |
+| -------------- | ------------ |
+| Gemini         | Eburon       |
+| Groq           | Eburon-OS    |
+| Ollama (cloud) | Eburon-cloud |
+| Ollama (local) | Eburon-local |
 
 ## Voice — Star Names
 

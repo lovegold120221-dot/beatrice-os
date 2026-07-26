@@ -149,6 +149,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
   String _ollamaBaseUrl = 'http://127.0.0.1:11434';
   String _openCodeUrl = 'http://127.0.0.1:4096';
   String _voiceName = LiveApiService.koreVoiceName;
+  String _assistantName = '';
 
   String? _currentChatId;
   List<Map<String, dynamic>> _chatHistory = [];

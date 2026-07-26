@@ -12,9 +12,15 @@ void main() {
   test('voice persona includes the core persona and interruption behavior', () {
     final voicePrompt = GeminiService.voicePersonalityPrompt;
 
-    expect(voicePrompt, contains('Beatrice — Eburon AI\'s conversational voice'));
+    expect(
+      voicePrompt,
+      contains('Beatrice — Beatrice OS\'s conversational voice'),
+    );
     expect(voicePrompt, isNot(startsWith(BeatricePersona.chatPrompt)));
-    expect(voicePrompt, contains('Ground every claim in what was actually heard'));
+    expect(
+      voicePrompt,
+      contains('Ground every claim in what was actually heard'),
+    );
     expect(voicePrompt, contains('specific confirmation before'));
     expect(voicePrompt, contains('Speak in short, interruptible chunks'));
     expect(voicePrompt, contains('interruptible chunks. Direct answer first'));
@@ -35,11 +41,23 @@ void main() {
     expect(BeatricePersona.chatPrompt, contains("How can I help you today"));
     expect(BeatricePersona.chatPrompt, contains('Never invent a name'));
     expect(BeatricePersona.chatPrompt, contains('respond to what they'));
-    expect(BeatricePersona.chatPrompt, contains('If you disagree, say so with a reason'));
-    expect(BeatricePersona.chatPrompt, contains('A genuine "Hmm.", "Maybe.", or "Nah."'));
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('If you disagree, say so with a reason'),
+    );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('A genuine "Hmm.", "Maybe.", or "Nah."'),
+    );
     expect(BeatricePersona.chatPrompt, contains('Empathy is specific'));
     expect(BeatricePersona.chatPrompt, contains('Never claim to remember'));
-    expect(BeatricePersona.chatPrompt, contains('low-risk reversible actions without ceremony'));
-    expect(BeatricePersona.chatPrompt, contains('Never narrate internal steps'));
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('low-risk reversible actions without ceremony'),
+    );
+    expect(
+      BeatricePersona.chatPrompt,
+      contains('Never narrate internal steps'),
+    );
   });
 }

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-BeatriceVoice — an AI voice/chat assistant ("Beatrice", by Eburon AI) built on Next.js 16 (App Router) with Gemini as the primary model, plus Ollama and Hugging Face Flux as alternative providers. A Flutter port of the same product lives under `flutter/`.
+BeatriceVoice — an AI voice/chat assistant ("Beatrice", by Beatrice OS) built on Next.js 16 (App Router) with Gemini as the primary model, plus Ollama and Hugging Face Flux as alternative providers. A Flutter port of the same product lives under `flutter/`.
 
 ## Commands
 
@@ -19,6 +19,7 @@ No test runner in the Next app. Flutter: `flutter test` (11 test files under `fl
 Copy `.env.example` → `.env.local`. Keys are `NEXT_PUBLIC_*` because **all AI calls run client-side** — there are no Next server actions and only one API route (`api/ollama/models`) that proxies Ollama's `/api/tags` to avoid CORS. `next.config.mjs` falls back from `NEXT_PUBLIC_*` to the non-prefixed var. Supabase defaults to placeholders — app runs without it but persistence silently no-ops. The app integrates with Google AI Studio at runtime via `window.aistudio` (key selection) — guarded behind optional `aistudio?.` checks.
 
 Required env vars (see `.env.example`):
+
 - `GEMINI_API_KEY` / `NEXT_PUBLIC_GEMINI_API_KEY` — required for all Gemini features
 - `OLLAMA_BASE_URL` — defaults to `http://localhost:11434`
 - `HF_TOKEN` / `NEXT_PUBLIC_HF_TOKEN` — for Flux image generation
@@ -29,6 +30,7 @@ Required env vars (see `.env.example`):
 **Single-page client app.** All UI lives in `src/app/page.tsx` (~100k lines, client component). `src/app/layout.tsx` is a bare shell. No route handlers or server components.
 
 **Service layer (`src/services/`)** — all client-side:
+
 - `gemini.ts` — chat (streaming + non-streaming), image gen/edit, image analysis, TTS, audio transcription, Live API voice session (`connectLive`). **`models` object at the top is the single source of truth for all Gemini model IDs.**
 - `ollama.ts` — alternative chat via local/hosted Ollama.
 - `flux.ts` — Hugging Face Flux.1-dev image gen; aspect-ratio → dimension mapping hardcoded.
@@ -38,6 +40,7 @@ Required env vars (see `.env.example`):
 - **`beatricePersona.ts`** — single source of truth for both system prompts (`BEATRICE_CHAT_PROMPT` and `BEATRICE_VOICE_PROMPT`). Both `gemini.ts` and `ollama.ts` import from here. Change Beatrice's personality here, not in individual service files.
 
 **Two parallel identity models:**
+
 - **Authenticated** (`auth.users` from Supabase) → `chats`, `messages`, `memories` keyed by `user_id`, protected by RLS (`auth.uid() = user_id`).
 - **Unauthenticated** → `device_profiles` keyed by a fingerprint-derived `device_id` in `localStorage` (`src/services/device.ts`). RLS is open (`USING (true)`) — no auth. Don't key unauthenticated data off `user_id`.
 

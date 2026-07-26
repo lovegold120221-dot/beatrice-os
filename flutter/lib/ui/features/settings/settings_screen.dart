@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:beatrice/data/services/live_api_service.dart';
+import 'package:beatrice/data/services/mobile_planner_provider.dart';
 import 'package:beatrice/data/services/ollama_service.dart';
 import 'package:beatrice/data/services/opencode_service.dart';
 import 'package:beatrice/ui/core/theme.dart';
@@ -11,6 +12,7 @@ class SettingsScreen extends StatefulWidget {
   final String language;
   final String theme;
   final String voiceName;
+  final String assistantName;
   final String ollamaModel;
   final String ollamaBaseUrl;
   final String ollamaProvider;
@@ -23,6 +25,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<String> onResponseStyleChanged;
   final ValueChanged<String> onLanguageChanged;
   final ValueChanged<String> onVoiceChanged;
+  final ValueChanged<String> onAssistantNameChanged;
   final ValueChanged<String> onOllamaModelChanged;
   final ValueChanged<String> onOllamaBaseUrlChanged;
   final ValueChanged<String> onOllamaProviderChanged;
@@ -37,6 +40,7 @@ class SettingsScreen extends StatefulWidget {
     required this.language,
     required this.theme,
     required this.voiceName,
+    required this.assistantName,
     required this.ollamaModel,
     required this.ollamaBaseUrl,
     required this.ollamaProvider,
@@ -49,6 +53,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onResponseStyleChanged,
     required this.onLanguageChanged,
     required this.onVoiceChanged,
+    required this.onAssistantNameChanged,
     required this.onOllamaModelChanged,
     required this.onOllamaBaseUrlChanged,
     required this.onOllamaProviderChanged,
@@ -68,6 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _baseUrlCtrl;
   late TextEditingController _cloudKeyCtrl;
   late TextEditingController _openCodeUrlCtrl;
+  late TextEditingController _assistantNameCtrl;
   List<String> _availableModels = [];
   bool _loadingModels = false;
   String? _connStatus;
@@ -97,6 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _baseUrlCtrl = TextEditingController(text: widget.ollamaBaseUrl);
     _cloudKeyCtrl = TextEditingController(text: widget.ollamaCloudApiKey);
     _openCodeUrlCtrl = TextEditingController(text: widget.openCodeUrl);
+    _assistantNameCtrl = TextEditingController(text: widget.assistantName);
     _fetchModels();
     _loadOpenCodeModels();
   }
@@ -228,6 +235,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
+          _label('Assistant name'),
+          const SizedBox(height: 4),
+          const Text(
+            'What you call this voice assistant during conversations.',
+            style: TextStyle(color: AppColors.neutral500, fontSize: 11),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _assistantNameCtrl,
+            onChanged: widget.onAssistantNameChanged,
+            style: const TextStyle(color: AppColors.white, fontSize: 14),
+            decoration: _inputDecoration('e.g., Beatrice'),
+          ),
+          const SizedBox(height: 24),
           _label('Language'),
           const SizedBox(height: 4),
           const Text(
@@ -283,6 +304,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: 'cloud',
                 child: Text('Jupiter · cloud (online)'),
               ),
+              DropdownMenuItem(
+                value: 'gemini',
+                child: Text('Eburon'),
+              ),
+              DropdownMenuItem(
+                value: 'groq',
+                child: Text('Eburon-OS'),
+              ),
             ],
             onChanged: (provider) {
               if (provider != null) widget.onOllamaProviderChanged(provider);
@@ -293,7 +322,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             widget.ollamaProvider == 'cloud'
                 ? 'Cloud requests and task observations are sent online '
                       'only when Cloud is selected.'
-                : 'Local requests stay on this device and run offline.',
+                : widget.ollamaProvider == 'gemini'
+                    ? 'Chat uses your Gemini API key. Responses are powered '
+                          'by Google Gemini.'
+                    : widget.ollamaProvider == 'groq'
+                        ? 'Chat is powered by hosted models via Groq API.'
+                        : 'Local requests stay on this device and run offline.',
             style: TextStyle(color: AppColors.neutral500, fontSize: 11),
           ),
           const SizedBox(height: 8),

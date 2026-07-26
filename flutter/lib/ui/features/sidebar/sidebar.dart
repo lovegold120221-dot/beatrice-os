@@ -67,7 +67,7 @@ class Sidebar extends StatelessWidget {
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                      'Eburon AI',
+                      'Beatrice OS',
                       style: TextStyle(
                         color: AppColors.white,
                         fontSize: 18,

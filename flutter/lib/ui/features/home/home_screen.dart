@@ -46,7 +46,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const Text(
-            'Eburon AI',
+            'Beatrice OS',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-BeatriceVoice — an AI voice/chat assistant ("Beatrice", by Eburon AI) built on Next.js 16 (App Router) with Gemini as the primary model, plus Ollama and Hugging Face Flux as alternative providers. A Flutter port of the same product lives under `flutter/`.
+BeatriceVoice — an AI voice/chat assistant ("Beatrice", by Beatrice OS) built on Next.js 16 (App Router) with Gemini as the primary model, plus Ollama and Hugging Face Flux as alternative providers. A Flutter port of the same product lives under `flutter/`.
 
 ## Commands
 
@@ -29,6 +29,7 @@ The app integrates with Google AI Studio at runtime via `window.aistudio` (key s
 **Single-page client app.** The entire UI is one 2.5k-line client component, `src/app/page.tsx` — chat, voice (Live API), image gen, camera, sidebar, settings, and Supabase auth all live there. `src/app/layout.tsx` is a bare shell. There are no route handlers; everything calls the service modules directly from the browser.
 
 **Service layer (`src/services/`)** — each provider is one module, all client-side:
+
 - `gemini.ts` — chat (streaming + non-streaming), image gen/edit, image analysis, TTS, audio transcription, and the Live API voice session (`connectLive`). **The `models` object at the top is the single source of truth for all Gemini model IDs** — change model strings there, not at call sites. Contains two distinct system prompts: `SYSTEM_PROMPT` (text chat) and `VOICE_PERSONALITY_PROMPT_BODY` (multilingual voice persona for Live API).
 - `ollama.ts` — alternative chat via local/hosted Ollama (`OLLAMA_BASE_URL` / `OLLAMA_MODEL`, defaults to `codemax-beta:latest`). Streaming generator.
 - `flux.ts` — Hugging Face Flux.1-dev image gen via Inference API; aspect-ratio → dimension mapping is hardcoded here.
@@ -37,6 +38,7 @@ The app integrates with Google AI Studio at runtime via `window.aistudio` (key s
 - `profile.ts` / `device.ts` — unauthenticated per-device preferences.
 
 **Two parallel identity models** (the key thing to understand before touching persistence):
+
 - **Authenticated** (`auth.users` from Supabase) → rows in `chats`, `messages`, `memories` are keyed by `user_id` and protected by RLS (`auth.uid() = user_id`).
 - **Unauthenticated** → `device_profiles` keyed by a fingerprint-derived `device_id` stored in `localStorage` (`src/services/device.ts`). That table's RLS is intentionally open (`USING (true)`) because there is no auth. Don't key unauthenticated data off `user_id` and don't add auth gates to device-profile flows.
 
