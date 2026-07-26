@@ -4,6 +4,7 @@ import {
   Type,
   Modality,
   createPartFromFunctionResponse,
+  LiveConnectConfig,
 } from "@google/genai";
 import { executeTool } from "./tools";
 import { BEATRICE_CHAT_PROMPT, BEATRICE_VOICE_PROMPT } from "./beatricePersona";
@@ -19,7 +20,7 @@ export const models = {
   imageBasic: "gemini-2.5-flash-image",
   imagePro: "gemini-3-pro-image-preview",
   audio: "gemini-3-flash-preview",
-  tts: "gemini-2.5-flash-preview-tts",
+  tts: "gemini-3.1-flash-tts-preview",
   live: "gemini-3.1-flash-live-preview",
 };
 
@@ -307,6 +308,7 @@ export function connectLive(
       systemInstruction: finalSystemPrompt,
       outputAudioTranscription: {},
       inputAudioTranscription: {},
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
     },
   });
 
