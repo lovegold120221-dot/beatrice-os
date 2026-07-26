@@ -18,9 +18,15 @@ No test runner in the Next app. Flutter: `flutter test` (11 test files under `fl
 
 Copy `.env.example` → `.env.local`. Keys are `NEXT_PUBLIC_*` because **all AI calls run client-side** — there are no Next server actions and only one API route (`api/ollama/models`) that proxies Ollama's `/api/tags` to avoid CORS. `next.config.mjs` falls back from `NEXT_PUBLIC_*` to the non-prefixed var. Supabase defaults to placeholders — app runs without it but persistence silently no-ops. The app integrates with Google AI Studio at runtime via `window.aistudio` (key selection) — guarded behind optional `aistudio?.` checks.
 
+Required env vars (see `.env.example`):
+- `GEMINI_API_KEY` / `NEXT_PUBLIC_GEMINI_API_KEY` — required for all Gemini features
+- `OLLAMA_BASE_URL` — defaults to `http://localhost:11434`
+- `HF_TOKEN` / `NEXT_PUBLIC_HF_TOKEN` — for Flux image generation
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — optional (persistence)
+
 ## Architecture
 
-**Single-page client app.** All UI lives in `src/app/page.tsx` (~2.5k lines, client component). `src/app/layout.tsx` is a bare shell. No route handlers or server components.
+**Single-page client app.** All UI lives in `src/app/page.tsx` (~100k lines, client component). `src/app/layout.tsx` is a bare shell. No route handlers or server components.
 
 **Service layer (`src/services/`)** — all client-side:
 - `gemini.ts` — chat (streaming + non-streaming), image gen/edit, image analysis, TTS, audio transcription, Live API voice session (`connectLive`). **`models` object at the top is the single source of truth for all Gemini model IDs.**
