@@ -1,0 +1,1 @@
+The iOS native host application that embeds the Flutter engine, registers plugins, and provides the UIKit entry points (AppDelegate, SceneDelegate, storyboards) for the Beatrice app.

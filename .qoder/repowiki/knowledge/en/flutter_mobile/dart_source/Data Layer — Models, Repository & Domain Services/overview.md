@@ -1,0 +1,1 @@
+Flutter data layer providing typed domain models, a Supabase-backed repository for persistence, and domain services that orchestrate AI providers (Gemini, Ollama), mobile automation, OCR, voice, and device/profile management.

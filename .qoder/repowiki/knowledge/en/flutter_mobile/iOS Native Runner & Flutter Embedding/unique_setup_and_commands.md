@@ -1,0 +1,1 @@
+CocoaPods analytics are disabled via `ENV['COCOAPODS_DISABLE_STATS'] = 'true'` in `Podfile`. Running `pod install` requires `flutter pub get` to be executed first so that `Flutter/Generated.xcconfig` (which contains `FLUTTER_ROOT`) exists; otherwise the Podfile raises an explicit error asking to delete `Generated.xcconfig` and re-run `flutter pub get`.

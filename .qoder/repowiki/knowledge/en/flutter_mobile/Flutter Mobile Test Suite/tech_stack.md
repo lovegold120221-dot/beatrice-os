@@ -1,0 +1,1 @@
+Flutter's `flutter_test` framework with `package:http/testing.dart` MockClient for HTTP stubbing; Supabase and SharedPreferences are initialized via their respective mock APIs in the global `setUpAll` fixture.

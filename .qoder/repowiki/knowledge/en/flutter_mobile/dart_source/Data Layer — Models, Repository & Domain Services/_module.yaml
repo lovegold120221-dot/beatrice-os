@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: flutter_mobile/dart_source/data_layer
+title: Data Layer — Models, Repository & Domain Services
+scope:
+    - flutter/lib/data/
+source_files: []
+depends_on: []
+related_to: []

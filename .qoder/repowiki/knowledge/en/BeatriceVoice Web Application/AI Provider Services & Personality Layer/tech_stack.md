@@ -1,0 +1,1 @@
+Next.js runtime (process.env.NEXT_PUBLIC_* and NODE_ENV-aware env vars), @google/genai SDK for Gemini, native fetch for Ollama HTTP streaming and Hugging Face Inference API, Supabase client for Postgres persistence, and browser localStorage + navigator/screen APIs for device fingerprinting.

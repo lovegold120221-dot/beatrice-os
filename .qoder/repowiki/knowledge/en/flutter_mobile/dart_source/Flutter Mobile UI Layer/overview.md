@@ -1,0 +1,1 @@
+Flutter Material widgets that render the mobile Beatrice OS interface — authentication, chat, voice/live mode, sidebar navigation, settings, and shared core components like theming and code blocks.

@@ -1,0 +1,1 @@
+Swift + UIKit with the Flutter iOS embedding (`Flutter.framework`), CocoaPods for third-party dependencies, Xcode project/workspace for building, and LLDB helpers under `Flutter/ephemeral/` for debugging. The app uses modern iOS scene-based lifecycle (`UIApplicationSceneManifest` with `UIWindowScene`).

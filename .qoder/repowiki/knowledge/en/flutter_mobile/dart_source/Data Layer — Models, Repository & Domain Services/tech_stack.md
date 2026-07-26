@@ -1,0 +1,1 @@
+Dart/Flutter with `supabase_flutter` for database/auth/storage, `http` for raw REST calls to Gemini and Ollama, and Android Accessibility API exposure through the native `MobileUseService` bridge. Uses JSON serialization via hand-written `fromJson`/`toJson` factories rather than code generation.

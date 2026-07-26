@@ -1,0 +1,4 @@
+- AppDelegate subclasses `FlutterAppDelegate` and implements `FlutterImplicitEngineDelegate`, delegating plugin registration to `GeneratedPluginRegistrant.register(with:)` rather than registering plugins manually.
+- SceneDelegate subclasses `FlutterSceneDelegate` without overriding methods, keeping scene lifecycle minimal and delegated to Flutter.
+- Build configuration is split per-configuration via `.xcconfig` files (`Debug.xcconfig`, `Release.xcconfig`) that include both the CocoaPods-generated config and `Generated.xcconfig`.
+- Permission usage descriptions are declared declaratively in `Info.plist` using `NS*UsageDescription` keys (microphone, camera, photo library) instead of being set at runtime.

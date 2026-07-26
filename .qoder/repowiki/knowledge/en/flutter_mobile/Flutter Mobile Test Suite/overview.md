@@ -1,0 +1,1 @@
+Unit and widget tests for Beatrice's mobile Flutter app, covering audio processing, task coordination, voice handoff, persona prompts, planner services, and the root application widget.

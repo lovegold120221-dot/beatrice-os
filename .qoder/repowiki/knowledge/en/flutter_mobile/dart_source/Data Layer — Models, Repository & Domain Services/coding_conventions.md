@@ -1,0 +1,5 @@
+- Domain models are immutable classes with a const constructor and a `fromJson` factory that coerces nullable fields with defaults (e.g. `?? ''`, `?? 'system'`).
+- Services follow a constructor-injection pattern where a dependency (usually `SupabaseRepository` or another service) is stored in a private final field and accessed directly without indirection.
+- External API clients expose discovery/configuration methods (`discoverModels`, `configure`, `ping`) that return structured result objects (`OllamaDiscoveryResult`, etc.) with an `isConnected` flag and human-readable `status` strings.
+- User-facing workflow state is emitted as typed events via `StreamController.broadcast()` streams (e.g. `MobileUseWorkflowEvent` with `MobileUseWorkflowEventType` enum values) rather than callbacks or exceptions.
+- Safety-sensitive operations validate inputs against explicit allowlists (actions, app packages, consequential terms) and throw `FormatException`/`StateError` with descriptive messages when constraints are violated.

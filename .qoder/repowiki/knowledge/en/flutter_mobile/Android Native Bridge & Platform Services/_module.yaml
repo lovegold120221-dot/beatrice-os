@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: flutter_mobile/android_native
+title: Android Native Bridge & Platform Services
+scope:
+    - flutter/android/
+source_files: []
+depends_on: []
+related_to: []

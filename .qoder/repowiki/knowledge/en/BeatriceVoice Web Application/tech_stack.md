@@ -1,0 +1,1 @@
+Next.js App Router with React Server Components for the shell, @google/genai for Gemini function declarations, @supabase/supabase-js for database/auth, and environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) for configuration.

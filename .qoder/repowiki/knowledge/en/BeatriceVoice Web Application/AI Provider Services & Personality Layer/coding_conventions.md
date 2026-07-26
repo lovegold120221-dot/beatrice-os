@@ -1,0 +1,5 @@
+- Each provider exposes a `generateChatResponseStream` generator yielding `{ text, groundingMetadata, functionCalls }` objects so callers can consume any backend uniformly.
+- System prompts are centralized in `beatricePersona.ts` and imported as `SYSTEM_PROMPT` by each provider rather than duplicated.
+- Environment configuration is read at module top-level from `process.env` with `NEXT_PUBLIC_*` fallbacks and defaults, then used to construct clients or URLs.
+- Supabase operations follow a consistent pattern: call `.from(table).upsert/select/update/delete`, destructure `{ data, error }`, log errors with `console.error`, and return empty arrays or null on failure instead of throwing.
+- Tool definitions are declared as typed `FunctionDeclaration` objects exported alongside a single `executeTool(name, args)` switch-based dispatcher.

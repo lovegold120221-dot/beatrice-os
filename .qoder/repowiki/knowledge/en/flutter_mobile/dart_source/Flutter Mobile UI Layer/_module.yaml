@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: flutter_mobile/dart_source/ui_layer
+title: Flutter Mobile UI Layer
+scope:
+    - flutter/lib/ui/
+source_files: []
+depends_on: []
+related_to: []

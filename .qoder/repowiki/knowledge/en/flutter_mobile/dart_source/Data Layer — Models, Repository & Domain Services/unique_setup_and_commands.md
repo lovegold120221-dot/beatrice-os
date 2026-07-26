@@ -1,0 +1,1 @@
+Ollama service supports both local Termux (`http://127.0.0.1:11434`) and cloud endpoints; clear-text HTTP to localhost is permitted by the Android manifest (`usesCleartextTraffic="true"`). MobileUseAgent runtime requires Android Accessibility to be enabled before any task can start, and enforces a hard 50-step planning limit plus an allowlist of actions and app packages.

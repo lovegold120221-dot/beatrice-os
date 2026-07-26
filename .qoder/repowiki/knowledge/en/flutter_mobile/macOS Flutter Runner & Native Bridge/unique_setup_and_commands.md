@@ -1,0 +1,1 @@
+Run `flutter pub get` before `pod install` because `Podfile` reads `FLUTTER_ROOT` from the generated `Flutter/ephemeral/Flutter-Generated.xcconfig`. The Podfile explicitly disables CocoaPods analytics (`COCOAPODS_DISABLE_STATS=true`) to avoid synchronous network calls during builds.

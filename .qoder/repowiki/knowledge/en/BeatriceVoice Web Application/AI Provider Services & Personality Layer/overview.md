@@ -1,0 +1,1 @@
+Pluggable AI provider implementations (Gemini, Ollama, Hugging Face Flux), shared Beatrice personality prompts, device identity, Supabase-backed memory and profile persistence, and a tool registry for function-calling.

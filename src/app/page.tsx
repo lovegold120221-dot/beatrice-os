@@ -606,10 +606,23 @@ export default function App() {
         },
         getFullUserContext(),
         responseStyle,
-        buildCuriosityPrompt(),
       );
 
       liveSessionRef.current = await sessionPromise;
+
+      setTimeout(() => {
+        const prompt = buildCuriosityPrompt();
+        if (prompt && liveSessionRef.current) {
+          try {
+            liveSessionRef.current.sendClientContent({
+              turns: [{ role: "user", parts: [{ text: prompt }] }],
+              turnComplete: true,
+            });
+          } catch (e) {
+            console.warn("Failed to send curiosity prompt:", e);
+          }
+        }
+      }, 1000);
     } catch (err) {
       console.error("Failed to start live session:", err);
       setIsVoiceOpen(false);

@@ -1,0 +1,1 @@
+Next.js web app that wires a chat UI to pluggable AI providers (Gemini, Ollama, Flux) with Supabase-backed memory and profiles through a shared tool registry.

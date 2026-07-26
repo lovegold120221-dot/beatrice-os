@@ -1,0 +1,115 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: en-US
+branch: codex/publish-beatrice-os
+nodes_managed: true
+exported_at: "2026-07-26T02:02:46Z"
+modules:
+    flutter_mobile:
+        dir_name: flutter_mobile
+        title: flutter_mobile
+        scope:
+            - flutter/
+        source_files: []
+        children:
+            - flutter_mobile/android_native
+            - flutter_mobile/dart_source
+            - flutter_mobile/ios_native
+            - flutter_mobile/macos_native
+            - flutter_mobile/tests
+        depends_on: []
+        related_to: []
+    flutter_mobile/android_native:
+        dir_name: Android Native Bridge & Platform Services
+        title: Android Native Bridge & Platform Services
+        scope:
+            - flutter/android/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    flutter_mobile/dart_source:
+        dir_name: dart_source
+        title: dart_source
+        scope:
+            - flutter/lib/
+        source_files: []
+        children:
+            - flutter_mobile/dart_source/data_layer
+            - flutter_mobile/dart_source/ui_layer
+        depends_on: []
+        related_to: []
+    flutter_mobile/dart_source/data_layer:
+        dir_name: Data Layer — Models, Repository & Domain Services
+        title: Data Layer — Models, Repository & Domain Services
+        scope:
+            - flutter/lib/data/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    flutter_mobile/dart_source/ui_layer:
+        dir_name: Flutter Mobile UI Layer
+        title: Flutter Mobile UI Layer
+        scope:
+            - flutter/lib/ui/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    flutter_mobile/ios_native:
+        dir_name: iOS Native Runner & Flutter Embedding
+        title: iOS Native Runner & Flutter Embedding
+        scope:
+            - flutter/ios/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    flutter_mobile/macos_native:
+        dir_name: macOS Flutter Runner & Native Bridge
+        title: macOS Flutter Runner & Native Bridge
+        scope:
+            - flutter/macos/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    flutter_mobile/tests:
+        dir_name: Flutter Mobile Test Suite
+        title: Flutter Mobile Test Suite
+        scope:
+            - flutter/test/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app:
+        dir_name: BeatriceVoice Web Application
+        title: BeatriceVoice Web Application
+        scope:
+            - src/
+        source_files: []
+        children:
+            - web_app/app_ui
+            - web_app/services
+        depends_on: []
+        related_to: []
+    web_app/app_ui:
+        dir_name: Next.js App Shell & Chat UI
+        title: Next.js App Shell & Chat UI
+        scope:
+            - src/app/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []
+    web_app/services:
+        dir_name: AI Provider Services & Personality Layer
+        title: AI Provider Services & Personality Layer
+        scope:
+            - src/services/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

@@ -1,0 +1,1 @@
+Flutter Material 3 (`useMaterial3: true`) with Google Fonts (Inter for body text, JetBrains Mono for code). Uses `flutter_widget_from_html_core` for HTML rendering inside CodeBlock, `camera` package for camera preview in VoiceScreen, and `google_fonts` for typography. Theme colors mirror the root Next.js app's Tailwind palette.

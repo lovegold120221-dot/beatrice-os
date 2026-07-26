@@ -1,0 +1,3 @@
+- AI providers are implemented as separate service modules under `src/services/` that export a consistent function-calling interface consumed by the UI.
+- Tool definitions use `@google/genai`'s `FunctionDeclaration` type with explicit parameter schemas and are registered through a central `tools` array plus `executeTool` dispatcher.
+- Supabase client is instantiated once in `src/lib/supabase.ts` and re-exported for reuse across UI and service layers instead of creating per-call clients.

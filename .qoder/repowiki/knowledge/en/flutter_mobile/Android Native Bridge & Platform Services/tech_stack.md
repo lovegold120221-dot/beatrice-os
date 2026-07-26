@@ -1,0 +1,1 @@
+Kotlin + Android SDK (minSdk 26, compile/target via Flutter's NDK/SDK), Flutter embedding v2, Tesseract4Android 4.9.0 for offline OCR, AudioTrack for low-latency PCM playback, Android AccessibilityService for UI automation, and Termux intents for shell execution.

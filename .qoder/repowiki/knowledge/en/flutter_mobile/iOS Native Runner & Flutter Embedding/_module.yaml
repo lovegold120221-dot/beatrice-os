@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: flutter_mobile/ios_native
+title: iOS Native Runner & Flutter Embedding
+scope:
+    - flutter/ios/
+source_files: []
+depends_on: []
+related_to: []

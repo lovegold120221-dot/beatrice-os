@@ -1,0 +1,6 @@
+- Feature screens are defined as StatelessWidget subclasses that receive all data and event handlers as constructor parameters, keeping them pure presentational widgets.
+- Stateful screens (AuthScreen, SettingsScreen, VoiceScreen) declare their own private State class with a leading underscore and manage local `TextEditingController`s, disposing them in `dispose()`.
+- All visual styling goes through the centralized `AppColors` constants from `ui/core/theme.dart` rather than inline color literals, ensuring consistency across features.
+- Form inputs share a common `_inputDecoration` helper that produces filled `InputDecoration` instances with rounded borders, consistent padding, and theme-aware border colors.
+- Cross-widget communication uses `ValueChanged<T>` and `VoidCallback` typed callbacks passed down the widget tree instead of global state or streams within the UI layer.
+- Animations use `AnimationController` with `TickerProviderStateMixin`, created in `initState` and disposed in `dispose`, driven by `AnimatedBuilder` or `AnimatedContainer`.

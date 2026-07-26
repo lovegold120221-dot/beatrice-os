@@ -1,0 +1,1 @@
+No build or setup scripts are specific to this module; it is consumed as part of the Flutter app. Assets such as `logo.png` are referenced via `Image.asset('logo.png')` and must be declared in the app's `pubspec.yaml` assets section.

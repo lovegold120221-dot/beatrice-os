@@ -1,0 +1,1 @@
+Tests are run through the standard Flutter test runner (`flutter test flutter/test/...`). The widget test requires `Supabase.initialize` with a dummy URL/key and `SharedPreferences.setMockInitialValues({})` in `setUpAll` before any widget is pumped.

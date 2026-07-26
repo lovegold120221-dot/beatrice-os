@@ -1,0 +1,4 @@
+- Native entry points subclass Flutter-provided base classes (`AppDelegate` extends `FlutterAppDelegate`, `MainFlutterWindow` extends `NSWindow`) rather than implementing UIKit/AppKit protocols directly.
+- Build configuration is split into per-environment xcconfig files under `Runner/Configs/` (AppInfo, Debug, Release, Warnings) and referenced via Xcode build settings instead of inline values.
+- Generated files are marked with a header comment `// Generated file. Do not edit.` and live under `Flutter/ephemeral/` or at the top level (`GeneratedPluginRegistrant.swift`), keeping them separate from hand-written source.
+- Plugin registration follows the Flutter plugin registry pattern: each plugin's `register(with:)` method is called from `RegisterGeneratedPlugins` using the plugin's canonical string name.

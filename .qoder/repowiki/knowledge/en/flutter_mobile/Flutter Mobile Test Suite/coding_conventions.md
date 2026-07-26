@@ -1,0 +1,4 @@
+- Each test file declares a single `void main()` that groups related `test(...)` or `testWidgets(...)` cases around one production class or feature.
+- Assertions use the `expect(...)` style from `flutter_test` with matchers such as `isTrue`, `isFalse`, `contains`, `greaterThan`, `lessThanOrEqualTo`, and `throwsFormatException`.
+- External dependencies like HTTP clients and time sources are injected via constructor parameters (e.g. `client:` and `clock:`) so tests can supply `MockClient` and deterministic `DateTime` values.
+- Service constants and static properties (e.g. `AudioService.liveInputSampleRate`, `LiveApiService.mobileTaskToolDeclaration`, `GeminiService.systemPrompt`) are asserted against expected literal values rather than instantiated objects.

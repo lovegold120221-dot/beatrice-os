@@ -1,0 +1,1 @@
+Swift + Cocoa (`Cocoa`, `FlutterMacOS`), Xcode project/workspace, CocoaPods for dependency management (platform macOS 10.15+), and Flutter 3.27.x (stable channel) providing the FlutterFramework Swift package.

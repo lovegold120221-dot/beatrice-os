@@ -1,0 +1,1 @@
+Requires an environment variable `OLLAMA_BASE_URL` (defaults to `http://127.0.0.1:11434`) so the `/api/ollama/models` route can discover locally running Ollama models. A Supabase project must be configured with `chats` and `messages` tables plus a `chat-images` storage bucket. Optional `window.aistudio` API is probed for Gemini API key selection in development.

@@ -1,0 +1,5 @@
+- Client-side settings are dual-persisted: read from `localStorage` keys prefixed `eburon_` on mount and written back through `saveDeviceProfile()` from `../services/profile`.
+- Streaming AI responses are consumed via async iterators over a stream returned by service functions (`geminiChatStream`, `ollamaChatStream`), with incremental text appended to the last message in state.
+- Provider selection between Gemini and Ollama is driven by a single `activeProvider` state field that switches which service function is invoked, keeping the call site identical.
+- Error handling around external calls wraps try/catch blocks and surfaces user-facing error messages as new `Message` objects with `role: 'model'` appended to the conversation.
+- Supabase data access follows a consistent pattern: query with `.select().eq().order()`, then map raw rows into the local `Message` shape before updating state.

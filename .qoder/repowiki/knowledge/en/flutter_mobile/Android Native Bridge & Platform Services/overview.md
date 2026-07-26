@@ -1,0 +1,1 @@
+Android native layer for the Beatrice Flutter app, exposing platform capabilities (mobile automation, OCR, live PCM audio, Termux integration) via MethodChannel bridges and foreground/accessibility services.

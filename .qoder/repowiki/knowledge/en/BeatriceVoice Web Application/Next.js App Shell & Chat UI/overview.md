@@ -1,0 +1,1 @@
+Next.js App Router root layout, global styles, and the single-page chat interface that drives Gemini/Ollama conversations, voice sessions, image generation, Supabase auth, and memory persistence.

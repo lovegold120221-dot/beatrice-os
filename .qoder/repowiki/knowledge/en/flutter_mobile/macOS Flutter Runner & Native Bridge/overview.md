@@ -1,0 +1,1 @@
+macOS Xcode project that boots the Flutter engine via CocoaPods, registers native plugins, and exposes the FlutterViewController as the app's main window.

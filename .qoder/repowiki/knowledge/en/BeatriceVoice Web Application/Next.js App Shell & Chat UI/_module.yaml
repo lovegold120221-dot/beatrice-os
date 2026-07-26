@@ -1,0 +1,8 @@
+schema_version: 1
+module_path: web_app/app_ui
+title: Next.js App Shell & Chat UI
+scope:
+    - src/app/
+source_files: []
+depends_on: []
+related_to: []

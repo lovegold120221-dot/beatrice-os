@@ -1,0 +1,5 @@
+- Each platform capability is exposed through a dedicated class implementing a `register()` method that creates a `MethodChannel` with a constant `NAME` and sets a `when(call.method)` handler returning `result.notImplemented()` for unknown methods.
+- Asynchronous operations that need to return results to Dart use a `pending*Result` field paired with a unique integer request code, populated before starting an activity or permission request and consumed in `onActivityResult` / `onRequestPermissionsResult`.
+- Cross-component state is shared via `@Volatile` companion-object fields (e.g. `MobileUseChannel.activeChannel`, `MobileUseAccessibilityService.instance`, `MobileUseRuntimeService.isRunning`) rather than dependency injection.
+- User-facing errors are reported through `result.error(code, message, null)` with stable uppercase error codes (e.g. `INVALID_GGUF`, `MODEL_COPY_FAILED`, `OCR_DATA_MISSING`, `ACCESSIBILITY_REQUIRED`).
+- Background work is offloaded to a single-threaded `ThreadPoolExecutor` or plain `Thread { ... }.start()` and results are posted back on the main thread via `context.runOnUiThread` or `context.mainExecutor.execute`.

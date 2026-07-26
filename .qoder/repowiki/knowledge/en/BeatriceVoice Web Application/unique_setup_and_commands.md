@@ -1,0 +1,1 @@
+Run via standard Next.js commands (`next dev`, `next build`, `next start`); requires `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` env vars at runtime.
