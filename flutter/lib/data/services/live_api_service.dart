@@ -152,6 +152,7 @@ SEAMLESS SECRETARY BEHAVIOR
   bool _disconnecting = false;
 
   bool get isConnected => _channel != null && _setupComplete;
+  bool get isSettingUp => !_setupComplete && _channel != null && !_disconnecting;
 
   Future<Stream<LiveApiEvent>> connect({
     required String apiKey,
