@@ -87,8 +87,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _loadingModels = true;
       _connStatus = widget.ollamaProvider == 'cloud'
-          ? 'Connecting to Ollama Cloud...'
-          : 'Looking for Ollama on this device...';
+          ? 'Connecting to cloud provider...'
+          : 'Looking for local provider...';
     });
     // Apply the current base URL before discovery so chips reflect the
     // configured Termux/host endpoint.
@@ -206,7 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onSelected: widget.onLanguageChanged,
           ),
           const SizedBox(height: 24),
-          _label('Ollama provider'),
+          _label('Chat provider'),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: widget.ollamaProvider,
@@ -214,11 +214,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             items: const [
               DropdownMenuItem(
                 value: 'local',
-                child: Text('Local · Termux (offline)'),
+                child: Text('Earth · local (offline)'),
               ),
               DropdownMenuItem(
                 value: 'cloud',
-                child: Text('Cloud · ollama.com (online)'),
+                child: Text('Jupiter · cloud (online)'),
               ),
             ],
             onChanged: (provider) {
@@ -228,9 +228,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 4),
           Text(
             widget.ollamaProvider == 'cloud'
-                ? 'Cloud requests and Task observations are sent to '
-                      'ollama.com only when Cloud is selected.'
-                : 'Local requests stay on this phone and require Termux Ollama.',
+                ? 'Cloud requests and task observations are sent online '
+                      'only when Cloud is selected.'
+                : 'Local requests stay on this device and run offline.',
             style: TextStyle(color: AppColors.neutral500, fontSize: 11),
           ),
           const SizedBox(height: 8),
@@ -242,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               autocorrect: false,
               onChanged: widget.onOllamaCloudApiKeyChanged,
               style: const TextStyle(color: AppColors.white, fontSize: 14),
-              decoration: _inputDecoration('Ollama Cloud API key'),
+              decoration: _inputDecoration('Cloud API key'),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -252,10 +252,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
           ] else ...[
-            _label('Local Ollama Server URL'),
+            _label('Local server URL'),
             const SizedBox(height: 4),
             const Text(
-              'For Termux on this device, use http://127.0.0.1:11434',
+              'For a local server on this device, use http://127.0.0.1:11434',
               style: TextStyle(color: AppColors.neutral500, fontSize: 11),
             ),
             const SizedBox(height: 8),
@@ -329,12 +329,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _label(
                 widget.ollamaProvider == 'cloud'
-                    ? 'Ollama Cloud model'
-                    : 'Local Ollama model',
+                    ? 'Cloud model'
+                    : 'Local model',
               ),
               IconButton(
                 onPressed: _loadingModels ? null : _fetchModels,
-                tooltip: 'Refresh Ollama models',
+                tooltip: 'Refresh models',
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(
                   Icons.refresh,
@@ -359,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _loadingModels
                   ? 'Discovering models...'
                   : _availableModels.isEmpty
-                  ? 'No models reported by Ollama'
+                  ? 'No models reported'
                   : 'Select a model',
               style: const TextStyle(color: AppColors.neutral400, fontSize: 14),
             ),
@@ -399,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   SizedBox(width: 8),
                   Text(
-                    'Loading models from Ollama...',
+                    'Loading models...',
                     style: TextStyle(color: AppColors.neutral400, fontSize: 12),
                   ),
                 ],

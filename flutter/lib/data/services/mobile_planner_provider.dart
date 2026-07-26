@@ -14,11 +14,6 @@ class MobilePlannerProvider {
   });
 }
 
-/// Provider choices shown in Beatrice setup.
-///
-/// Only providers with a production planner adapter are marked integrated.
-/// Keeping the capability state in this registry prevents the UI from implying
-/// that a visible provider can already execute MobileUseAgent tasks.
 abstract final class MobilePlannerProviders {
   static const ollamaLocal = 'ollama-local';
   static const ollamaCloud = 'ollama-cloud';
@@ -28,79 +23,78 @@ abstract final class MobilePlannerProviders {
   static const options = <MobilePlannerProvider>[
     MobilePlannerProvider(
       id: ollamaLocal,
-      label: 'Ollama · Local',
-      description: 'Termux Ollama on this phone; works offline.',
+      label: 'Earth',
+      description: 'Local planner runs on this device; works offline.',
       isIntegrated: true,
       isOnline: false,
     ),
     MobilePlannerProvider(
       id: ollamaCloud,
-      label: 'Ollama · Cloud',
-      description: 'Ollama Cloud; sends task context online.',
+      label: 'Jupiter',
+      description: 'Cloud planner sends task context online.',
       isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: gemini,
-      label: 'Gemini',
-      description: 'Google Gemini online planner with your API key.',
+      label: 'Neptune',
+      description: 'Online planner with your API key.',
       isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: groq,
-      label: 'Groq',
-      description: 'GroqCloud online planner with your API key.',
+      label: 'Mars',
+      description: 'Online planner with your API key.',
       isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'openai',
-      label: 'OpenAI',
-      description: 'Planner adapter and key setup are not configured yet.',
+      label: 'Saturn',
+      description: 'Planner adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'claude',
-      label: 'Claude',
-      description: 'Anthropic planner adapter is not configured yet.',
+      label: 'Venus',
+      description: 'Planner adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'deepseek',
-      label: 'DeepSeek',
-      description: 'Planner adapter and key setup are not configured yet.',
+      label: 'Mercury',
+      description: 'Planner adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'qwen',
-      label: 'Qwen',
-      description:
-          'Direct Qwen provider setup is not configured; Qwen via Ollama works.',
+      label: 'Uranus',
+      description: 'Planner adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'opencode-zen-free',
-      label: 'OpenCode Zen · Free models',
-      description: 'OpenCode planner execution adapter is not configured yet.',
+      label: 'Callisto',
+      description: 'Planner adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'opencode-go',
-      label: 'OpenCode Go',
-      description: 'OpenCode planner execution adapter is not configured yet.',
+      label: 'Europa',
+      description: 'Planner adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: 'custom',
-      label: 'Custom model',
-      description: 'A custom endpoint adapter is not configured yet.',
+      label: 'Pluto',
+      description: 'Custom endpoint adapter is not configured yet.',
       isIntegrated: false,
       isOnline: true,
     ),

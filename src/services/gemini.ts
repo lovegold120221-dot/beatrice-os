@@ -6,10 +6,7 @@ import {
   createPartFromFunctionResponse,
 } from "@google/genai";
 import { executeTool } from "./tools";
-import {
-  BEATRICE_CHAT_PROMPT,
-  BEATRICE_VOICE_PROMPT,
-} from "./beatricePersona";
+import { BEATRICE_CHAT_PROMPT, BEATRICE_VOICE_PROMPT } from "./beatricePersona";
 
 const apiKey =
   process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
@@ -23,7 +20,7 @@ export const models = {
   imagePro: "gemini-3-pro-image-preview",
   audio: "gemini-3-flash-preview",
   tts: "gemini-2.5-flash-preview-tts",
-  live: "gemini-2.5-flash-native-audio-preview-12-2025",
+  live: "gemini-3.1-flash-live-preview",
 };
 
 const BEATRICE_VOICE_NAME = "Kore";

@@ -148,7 +148,7 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
   }
 
   Future<void> _discoverOllama() async {
-    if (mounted) setState(() => _ollamaStatus = 'Checking local Ollama…');
+    if (mounted) setState(() => _ollamaStatus = 'Checking local provider…');
     final discovery = await widget.ollamaService.discoverModels();
     if (!mounted) return;
     if (discovery.endpoint != null) {
@@ -558,8 +558,8 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
             const SizedBox(height: 5),
             Text(
               widget.ollamaProvider == 'cloud'
-                  ? 'Task briefs and sanitized observations are sent to '
-                        'ollama.com. Native actions remain locally validated.'
+                  ? 'Task briefs and observations are sent online. '
+                        'Native actions remain locally validated.'
                   : 'Recommended: qwen2.5:0.5b for low memory, or '
                         'qwen2.5:1.5b for better quality.',
               style: const TextStyle(color: AppColors.neutral500, fontSize: 10),
@@ -571,7 +571,7 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
                   : null,
               isExpanded: true,
               decoration: const InputDecoration(
-                labelText: 'Exact discovered Ollama model',
+                labelText: 'Exact discovered model',
                 isDense: true,
               ),
               items: _ollamaModels
@@ -599,15 +599,14 @@ class _MobileUseServerCardState extends State<MobileUseServerCard>
             OutlinedButton.icon(
               onPressed: _busy ? null : _discoverOllama,
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Refresh Ollama models'),
+              label: const Text('Refresh models'),
             ),
           ] else ...[
             const SizedBox(height: 6),
             const Text(
               'Visible for provider planning only. MobileUseAgent will stop '
               'with a clear setup error instead of silently using another '
-              'provider. Choose Ollama, Gemini, or Groq for working execution '
-              'in this build.',
+              'provider. Choose an integrated provider for working execution.',
               style: TextStyle(color: AppColors.neutral500, fontSize: 10),
             ),
           ],

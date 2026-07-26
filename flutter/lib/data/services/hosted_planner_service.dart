@@ -292,5 +292,5 @@ class HostedPlannerService {
   }
 
   static String _providerLabel(String providerId) =>
-      providerId == MobilePlannerProviders.gemini ? 'Gemini' : 'Groq';
+      MobilePlannerProviders.byId(providerId).label;
 }

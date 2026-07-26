@@ -18,7 +18,7 @@ class GeminiService {
     'imagePro': 'gemini-3-pro-image-preview',
     'audio': 'gemini-3-flash-preview',
     'tts': 'gemini-2.5-flash-preview-tts',
-    'live': 'gemini-2.5-flash-native-audio-preview-12-2025',
+    'live': 'gemini-3.1-flash-live-preview',
   };
 
   static const String voicePersonalityPrompt = BeatricePersona.voicePrompt;

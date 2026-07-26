@@ -408,7 +408,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
     final provider = MobilePlannerProviders.byId(providerId);
     if (provider.id != MobilePlannerProviders.gemini &&
         provider.id != MobilePlannerProviders.groq) {
-      throw StateError('Only Gemini or Groq uses hosted planner settings.');
+      throw StateError('Only Neptune or Mars uses hosted planner settings.');
     }
     final selectedModel = model.trim();
     final selectedKey = apiKey.trim();
@@ -652,8 +652,8 @@ class _BeatriceHomeState extends State<BeatriceHome>
       } else {
         if (_ollamaModel.isEmpty) {
           throw Exception(
-            'Chat needs a discovered Ollama model. Start `ollama serve` in '
-            'Termux, then choose an installed model in Beatrice setup.',
+            'Chat needs a discovered model. Start a local server, '
+            'then choose an installed model in Beatrice setup.',
           );
         }
         final discovery = await _ollama.discoverModels(
@@ -662,16 +662,16 @@ class _BeatriceHomeState extends State<BeatriceHome>
         if (!discovery.isConnected) {
           throw Exception(
             _ollamaProvider == 'cloud'
-                ? 'Ollama Cloud is unavailable. Check internet access and '
+                ? 'Cloud provider is unavailable. Check internet access and '
                       'the Cloud API key in Settings.'
-                : 'Local Ollama is offline. Start `ollama serve` in Termux, '
+                : 'Local provider is offline. Start a local server, '
                       'then retry.',
           );
         }
         if (!discovery.models.contains(_ollamaModel)) {
           throw Exception(
-            'The selected Ollama model "$_ollamaModel" is not currently '
-            'reported by ${discovery.endpoint}. Refresh Ollama models in '
+            'The selected model "$_ollamaModel" is not currently '
+            'reported by the provider. Refresh models in '
             'Settings.',
           );
         }
@@ -734,12 +734,13 @@ class _BeatriceHomeState extends State<BeatriceHome>
         await _loadMemories();
       }
     } catch (e) {
+      final clean = e.toString()
+          .replaceFirst(RegExp(r'^(Exception|Bad state|FormatException):\s*'), '')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
       setState(() {
         _messages.add(
-          Message(
-            role: 'model',
-            text: 'Sorry, something went wrong. ${e.toString()}',
-          ),
+          Message(role: 'model', text: clean),
         );
       });
       _saveMessageToDb(

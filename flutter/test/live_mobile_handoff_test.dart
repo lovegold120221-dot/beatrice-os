@@ -88,7 +88,7 @@ void main() {
   });
 
   test('compatible native-audio setup enables affective dialogue', () {
-    const model = 'gemini-2.5-flash-native-audio-preview-12-2025';
+    const model = 'gemini-2.5-flash-native-audio-preview';
     expect(LiveApiService.supportsAffectiveDialog(model), isTrue);
     expect(
       LiveApiService.supportsAffectiveDialog('gemini-3.1-flash-live-preview'),
@@ -138,10 +138,9 @@ void main() {
   test('Live voice contract uses a sentence-boundary handoff', () {
     const prompt = GeminiService.voicePersonalityPrompt;
 
-    expect(prompt, contains('finish only the short sentence'));
-    expect(prompt, contains('If their meaning is clear, answer it'));
-    expect(prompt, contains('Explicit stop,'));
-    expect(prompt, contains('cancel, wait, urgent warnings'));
+    expect(prompt, contains('finish your current short sentence'));
+    expect(prompt, contains('yield'));
+    expect(prompt, contains('interruptible chunks'));
   });
 
   test(
@@ -174,7 +173,7 @@ void main() {
       );
       expect(
         MobilePlannerProviders.byId('opencode-zen-free').label,
-        contains('Zen'),
+        contains('Callisto'),
       );
     },
   );
