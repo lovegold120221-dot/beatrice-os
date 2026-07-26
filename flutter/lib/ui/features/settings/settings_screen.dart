@@ -73,6 +73,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _connStatus;
   bool _testing = false;
   List<String> _openCodeModels = [];
+  String? _openCodeModel;
+  bool _loadingOpenCode = false;
+
+  static const _stoneAliases = [
+    'Diamond', 'Ruby', 'Emerald', 'Sapphire', 'Amethyst',
+    'Topaz', 'Opal', 'Garnet', 'Jade', 'Pearl',
+    'Onyx', 'Tanzanite', 'Citrine', 'Turquoise', 'Spinel',
+  ];
+
+  String _stoneFor(String modelId, List<String> allModels) {
+    final idx = allModels.indexOf(modelId);
+    if (idx < 0) return modelId;
+    return _stoneAliases[idx % _stoneAliases.length];
+  }
 
   @override
   void initState() {
@@ -84,6 +98,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _cloudKeyCtrl = TextEditingController(text: widget.ollamaCloudApiKey);
     _openCodeUrlCtrl = TextEditingController(text: widget.openCodeUrl);
     _fetchModels();
+    _loadOpenCodeModels();
+  }
+
+  Future<void> _loadOpenCodeModels() async {
+    final service = widget.openCodeService;
+    if (service == null) return;
+    setState(() => _loadingOpenCode = true);
+    service.baseUrl = _openCodeUrlCtrl.text;
+    final models = await service.listModels();
+    if (!mounted) return;
+    setState(() {
+      _openCodeModels = models;
+      _loadingOpenCode = false;
+      if (models.isNotEmpty && _openCodeModel == null) {
+        _openCodeModel = models.first;
+      }
+    });
   }
 
   Future<void> _fetchModels() async {
@@ -446,44 +477,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
             decoration: _inputDecoration('http://127.0.0.1:4096'),
           ),
           const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: () async {
-              final service = widget.openCodeService;
-              if (service == null) return;
-              service.baseUrl = _openCodeUrlCtrl.text;
-              final models = await service.listModels();
-              if (mounted) setState(() => _openCodeModels = models);
-            },
-            child: const Text('Load OpenCode models'),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _loadingOpenCode
+                      ? null
+                      : () => _loadOpenCodeModels(),
+                  child: _loadingOpenCode
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.black,
+                          ),
+                        )
+                      : const Text('Connect OpenCode'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  try {
+                    await widget.openCodeService?.startLocalServer();
+                    if (mounted) {
+                      setState(
+                        () => _connStatus =
+                            'OpenCode server start requested in Termux.',
+                      );
+                    }
+                  } catch (_) {
+                    if (mounted) {
+                      setState(
+                        () => _connStatus =
+                            'Install Termux and Termux:API, then try again.',
+                      );
+                    }
+                  }
+                },
+                child: const Text('Start in Termux'),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: () async {
-              try {
-                await widget.openCodeService?.startLocalServer();
-                if (mounted) {
-                  setState(
-                    () => _connStatus =
-                        'OpenCode server start requested in Termux.',
-                  );
+          if (_openCodeModels.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _label('Zen Free model'),
+            const SizedBox(height: 4),
+            const Text(
+              'Auto-discovered from OpenCode. Each model is shown as a '
+              'precious stone alias.',
+              style: TextStyle(color: AppColors.neutral500, fontSize: 11),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              key: ValueKey(
+                'opencode::${_openCodeModels.join('|')}',
+              ),
+              initialValue: _openCodeModel,
+              isExpanded: true,
+              dropdownColor: AppColors.chip2121,
+              iconEnabledColor: AppColors.neutral400,
+              style: const TextStyle(color: AppColors.white, fontSize: 14),
+              decoration: _inputDecoration('Select a Zen Free model'),
+              items: _openCodeModels
+                  .map(
+                    (model) => DropdownMenuItem<String>(
+                      value: model,
+                      child: Text(
+                        '${_stoneFor(model, _openCodeModels)} · $model',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (model) {
+                if (model != null) {
+                  setState(() => _openCodeModel = model);
                 }
-              } catch (_) {
-                if (mounted) {
-                  setState(
-                    () => _connStatus =
-                        'Install Termux and Termux:API, then try again.',
-                  );
-                }
-              }
-            },
-            child: const Text('Start OpenCode server in Termux'),
-          ),
-          if (_openCodeModels.isNotEmpty)
+              },
+            ),
+          ] else if (!_loadingOpenCode)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                '${_openCodeModels.length} OpenCode models available',
-                style: const TextStyle(color: AppColors.emerald, fontSize: 12),
+                'Connect OpenCode to discover available Zen Free models.',
+                style: TextStyle(color: AppColors.neutral500, fontSize: 12),
               ),
             ),
           const SizedBox(height: 24),
