@@ -1,17 +1,50 @@
-# beatrice
+# Beatrice — Flutter
 
-A new Flutter project.
+Mobile port of the Beatrice AI voice/chat assistant by Eburon AI. Conversational AI with voice mode, mobile-use agent orchestration, and multi-provider support (Gemini, Ollama, Groq, OpenAI, Claude, DeepSeek, Qwen, and more).
+
+## Features
+
+- **Chat & Voice Conversations** — text and streaming voice via Gemini Live API with Kore voice
+- **Multi-Provider Planners** — route tasks through any supported LLM provider
+- **Mobile Use Agent** — on-device task execution with consent-aware orchestration
+- **Long-Term Memory** — persona-aware memory extraction and retrieval
+
+## Provider Aliases
+
+Providers appear in the UI as planet aliases:
+
+| Provider        | Alias     |
+| --------------- | --------- |
+| Gemini          | Neptune   |
+| Ollama (local)  | Earth     |
+| Ollama (cloud)  | Jupiter   |
+| Groq            | Mars      |
+| OpenAI          | Saturn    |
+| Claude          | Venus     |
+| DeepSeek        | Mercury   |
+| Qwen            | Uranus    |
+| OpenCode Zen    | Callisto  |
+| OpenCode Go     | Europa    |
+| Custom          | Pluto     |
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+**Prerequisites:** [Flutter SDK](https://docs.flutter.dev/get-started/install)
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter pub get
+flutter run
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Build a release APK:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter build apk --dart-define=GEMINI_API_KEY=your_key_here
+```
+
+## Test
+
+```bash
+flutter test          # 62+ tests
+flutter analyze       # lint check
+```
