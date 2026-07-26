@@ -13,19 +13,26 @@ Mobile port of the Beatrice AI voice/chat assistant by Eburon AI. Conversational
 
 Providers appear in the UI as planet aliases:
 
-| Provider        | Alias     |
-| --------------- | --------- |
-| Gemini          | Neptune   |
-| Ollama (local)  | Earth     |
-| Ollama (cloud)  | Jupiter   |
-| Groq            | Mars      |
-| OpenAI          | Saturn    |
-| Claude          | Venus     |
-| DeepSeek        | Mercury   |
-| Qwen            | Uranus    |
-| OpenCode Zen    | Callisto  |
-| OpenCode Go     | Europa    |
-| Custom          | Pluto     |
+| Provider        | Alias        |
+| --------------- | ------------ |
+| Gemini          | Eburon       |
+| Groq            | Eburon-OS    |
+| Ollama (cloud)  | Eburon-cloud |
+| Ollama (local)  | Eburon-local |
+
+## Voice — Star Names
+
+Live voice conversations use Gemini prebuilt voices aliased as star names:
+
+| Voice API | Star alias |
+| --------- | ---------- |
+| Kore      | Polaris    |
+| Puck      | Vega       |
+| Aoede     | Sirius     |
+| Charon    | Rigel      |
+| Fenrir    | Betelgeuse |
+| Leda      | Aldebaran  |
+| Orus      | Altair     |
 
 ## Getting Started
 

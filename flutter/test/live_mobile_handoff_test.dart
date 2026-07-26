@@ -172,8 +172,8 @@ void main() {
         isTrue,
       );
       expect(
-        MobilePlannerProviders.byId('opencode-zen-free').label,
-        contains('Callisto'),
+        MobilePlannerProviders.byId('gemini').label,
+        contains('Eburon'),
       );
     },
   );

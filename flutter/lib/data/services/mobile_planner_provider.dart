@@ -23,28 +23,28 @@ abstract final class MobilePlannerProviders {
   static const options = <MobilePlannerProvider>[
     MobilePlannerProvider(
       id: ollamaLocal,
-      label: 'Earth',
+      label: 'Eburon-local',
       description: 'Local planner runs on this device; works offline.',
       isIntegrated: true,
       isOnline: false,
     ),
     MobilePlannerProvider(
       id: ollamaCloud,
-      label: 'Jupiter',
+      label: 'Eburon-cloud',
       description: 'Cloud planner sends task context online.',
       isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: gemini,
-      label: 'Neptune',
+      label: 'Eburon',
       description: 'Online planner with your API key.',
       isIntegrated: true,
       isOnline: true,
     ),
     MobilePlannerProvider(
       id: groq,
-      label: 'Mars',
+      label: 'Eburon-OS',
       description: 'Online planner with your API key.',
       isIntegrated: true,
       isOnline: true,

@@ -48,6 +48,26 @@ class LiveApiService {
   static const String koreVoiceName = 'Kore';
   static const String conversationalActivityHandling = 'NO_INTERRUPTION';
 
+  static const List<Map<String, String>> voiceOptions = [
+    {'apiName': 'Kore', 'label': 'Polaris'},
+    {'apiName': 'Puck', 'label': 'Vega'},
+    {'apiName': 'Aoede', 'label': 'Sirius'},
+    {'apiName': 'Charon', 'label': 'Rigel'},
+    {'apiName': 'Fenrir', 'label': 'Betelgeuse'},
+    {'apiName': 'Leda', 'label': 'Aldebaran'},
+    {'apiName': 'Orus', 'label': 'Altair'},
+  ];
+
+  static String labelForVoice(String apiName) {
+    final match = voiceOptions.where((v) => v['apiName'] == apiName);
+    return match.isNotEmpty ? match.first['label']! : apiName;
+  }
+
+  static String apiNameForLabel(String label) {
+    final match = voiceOptions.where((v) => v['label'] == label);
+    return match.isNotEmpty ? match.first['apiName']! : koreVoiceName;
+  }
+
   static const Map<String, dynamic> mobileTaskToolDeclaration = {
     'name': 'dispatch_mobile_task',
     'description':

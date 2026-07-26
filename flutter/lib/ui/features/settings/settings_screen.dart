@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:beatrice/data/services/live_api_service.dart';
 import 'package:beatrice/data/services/ollama_service.dart';
 import 'package:beatrice/data/services/opencode_service.dart';
 import 'package:beatrice/ui/core/theme.dart';
@@ -9,6 +10,7 @@ class SettingsScreen extends StatefulWidget {
   final String responseStyle;
   final String language;
   final String theme;
+  final String voiceName;
   final String ollamaModel;
   final String ollamaBaseUrl;
   final String ollamaProvider;
@@ -20,6 +22,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<String> onUserContextChanged;
   final ValueChanged<String> onResponseStyleChanged;
   final ValueChanged<String> onLanguageChanged;
+  final ValueChanged<String> onVoiceChanged;
   final ValueChanged<String> onOllamaModelChanged;
   final ValueChanged<String> onOllamaBaseUrlChanged;
   final ValueChanged<String> onOllamaProviderChanged;
@@ -33,6 +36,7 @@ class SettingsScreen extends StatefulWidget {
     required this.responseStyle,
     required this.language,
     required this.theme,
+    required this.voiceName,
     required this.ollamaModel,
     required this.ollamaBaseUrl,
     required this.ollamaProvider,
@@ -44,6 +48,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onUserContextChanged,
     required this.onResponseStyleChanged,
     required this.onLanguageChanged,
+    required this.onVoiceChanged,
     required this.onOllamaModelChanged,
     required this.onOllamaBaseUrlChanged,
     required this.onOllamaProviderChanged,
@@ -204,6 +209,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
           LanguagePickerField(
             selectedLanguage: widget.language,
             onSelected: widget.onLanguageChanged,
+          ),
+          const SizedBox(height: 24),
+          _label('Voice'),
+          const SizedBox(height: 4),
+          const Text(
+            'Select the voice used during Live voice conversations.',
+            style: TextStyle(color: AppColors.neutral500, fontSize: 11),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: LiveApiService.labelForVoice(widget.voiceName),
+            decoration: _inputDecoration('Voice'),
+            items: LiveApiService.voiceOptions
+                .map(
+                  (v) => DropdownMenuItem(
+                    value: v['label'],
+                    child: Text(v['label']!),
+                  ),
+                )
+                .toList(),
+            onChanged: (label) {
+              if (label != null) {
+                widget.onVoiceChanged(
+                  LiveApiService.apiNameForLabel(label),
+                );
+              }
+            },
           ),
           const SizedBox(height: 24),
           _label('Chat provider'),

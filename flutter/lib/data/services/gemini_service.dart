@@ -6,9 +6,48 @@ import 'beatrice_persona.dart';
 class GeminiService {
   static const _baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
   static const String speechVoiceName = 'Kore';
-  final String apiKey;
+  String apiKey;
+  final String apiKeyFallback;
+  bool _useFallback = false;
 
-  GeminiService(this.apiKey);
+  GeminiService(this.apiKey, {this.apiKeyFallback = ''});
+
+  String get _currentKey => _useFallback && apiKeyFallback.isNotEmpty
+      ? apiKeyFallback
+      : apiKey;
+
+  void _rotateKey() {
+    if (apiKeyFallback.isNotEmpty) {
+      _useFallback = !_useFallback;
+    }
+  }
+
+  bool _shouldRetry(int statusCode) =>
+      statusCode == 429 || statusCode == 403;
+
+  Uri _url(String model, String action) =>
+      Uri.parse('$_baseUrl/models/$model:$action?key=$_currentKey');
+
+  Future<http.Response> _post(
+    Uri uri,
+    Map<String, dynamic> body, {
+    int retries = 1,
+  }) async {
+    for (int attempt = 0; attempt <= retries; attempt++) {
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 200) return response;
+      if (_shouldRetry(response.statusCode) && attempt < retries) {
+        _rotateKey();
+        continue;
+      }
+      return response;
+    }
+    throw Exception('Gemini API error after retries');
+  }
 
   static const models = {
     'chat': 'gemini-2.5-flash',
@@ -109,9 +148,6 @@ class GeminiService {
 
     final contents = _buildContents(history, prompt);
     final model = useFast ? models['fast']! : models['chat']!;
-    final url = Uri.parse(
-      '$_baseUrl/models/$model:streamGenerateContent?key=$apiKey',
-    );
 
     final body = {
       'systemInstruction': {
@@ -131,13 +167,17 @@ class GeminiService {
       };
     }
 
-    final request = http.Request('POST', url);
-    request.headers['Content-Type'] = 'application/json';
-    request.body = jsonEncode(body);
-
-    final streamedResponse = await http.Client().send(request);
-
-    if (streamedResponse.statusCode != 200) {
+    http.StreamedResponse streamedResponse;
+    for (int attempt = 0;; attempt++) {
+      final req = http.Request('POST', _url(model, 'streamGenerateContent'));
+      req.headers['Content-Type'] = 'application/json';
+      req.body = jsonEncode(body);
+      streamedResponse = await http.Client().send(req);
+      if (streamedResponse.statusCode == 200) break;
+      if (_shouldRetry(streamedResponse.statusCode) && attempt == 0) {
+        _rotateKey();
+        continue;
+      }
       final errorBody = await streamedResponse.stream.bytesToString();
       throw Exception(
         'Gemini API error: ${streamedResponse.statusCode} $errorBody',
@@ -197,9 +237,6 @@ class GeminiService {
   }) async {
     final isBasic = size == '1K' && aspectRatio == '1:1';
     final model = isBasic ? models['imageBasic']! : models['image']!;
-    final url = Uri.parse(
-      '$_baseUrl/models/$model:generateContent?key=$apiKey',
-    );
 
     final config = <String, dynamic>{
       'responseModalities': ['IMAGE', 'TEXT'],
@@ -220,12 +257,7 @@ class GeminiService {
       'generationConfig': config,
     };
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
-    );
-
+    final response = await _post(_url(model, 'generateContent'), body);
     if (response.statusCode != 200) {
       throw Exception('Image generation error: ${response.statusCode}');
     }
@@ -247,9 +279,6 @@ class GeminiService {
     String base64Data,
     String mimeType,
   ) async {
-    final url = Uri.parse(
-      '$_baseUrl/models/${models['imageBasic']!}:generateContent?key=$apiKey',
-    );
     final body = {
       'contents': [
         {
@@ -262,10 +291,9 @@ class GeminiService {
         },
       ],
     };
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+    final response = await _post(
+      _url(models['imageBasic']!, 'generateContent'),
+      body,
     );
     if (response.statusCode != 200) {
       throw Exception('Edit image error: ${response.statusCode}');
@@ -287,9 +315,6 @@ class GeminiService {
     String base64Data,
     String mimeType,
   ) async {
-    final url = Uri.parse(
-      '$_baseUrl/models/${models['chat']!}:generateContent?key=$apiKey',
-    );
     final body = {
       'contents': [
         {
@@ -302,10 +327,9 @@ class GeminiService {
         },
       ],
     };
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+    final response = await _post(
+      _url(models['chat']!, 'generateContent'),
+      body,
     );
     if (response.statusCode != 200) {
       throw Exception('Analyze image error: ${response.statusCode}');
@@ -316,9 +340,6 @@ class GeminiService {
   }
 
   Future<String?> textToSpeech(String text) async {
-    final url = Uri.parse(
-      '$_baseUrl/models/${models['tts']!}:generateContent?key=$apiKey',
-    );
     final body = {
       'contents': [
         {
@@ -336,10 +357,9 @@ class GeminiService {
         },
       },
     };
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+    final response = await _post(
+      _url(models['tts']!, 'generateContent'),
+      body,
     );
     if (response.statusCode != 200) {
       throw Exception('TTS error: ${response.statusCode}');
@@ -357,9 +377,6 @@ class GeminiService {
   }
 
   Future<String?> transcribeAudio(String base64Data, String mimeType) async {
-    final url = Uri.parse(
-      '$_baseUrl/models/${models['audio']!}:generateContent?key=$apiKey',
-    );
     final body = {
       'contents': [
         {
@@ -372,10 +389,9 @@ class GeminiService {
         },
       ],
     };
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+    final response = await _post(
+      _url(models['audio']!, 'generateContent'),
+      body,
     );
     if (response.statusCode != 200) {
       throw Exception('Transcribe error: ${response.statusCode}');

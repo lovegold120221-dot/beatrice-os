@@ -63,6 +63,10 @@ class BeatriceHome extends StatefulWidget {
 class _BeatriceHomeState extends State<BeatriceHome>
     with WidgetsBindingObserver {
   static const _secureStorage = FlutterSecureStorage();
+  static const _geminiKey = String.fromEnvironment('GEMINI_API_KEY');
+  static const _geminiFallbackKey =
+      String.fromEnvironment('GEMINI_API_KEY_FALLBACK');
+  static const _groqKey = String.fromEnvironment('GROQ_API_KEY');
   static const _preferredOllamaModel = String.fromEnvironment(
     'OLLAMA_MODEL',
     defaultValue: 'eburon-code-fast:latest',
@@ -144,6 +148,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
   String _groqPlannerModel = '';
   String _ollamaBaseUrl = 'http://127.0.0.1:11434';
   String _openCodeUrl = 'http://127.0.0.1:4096';
+  String _voiceName = LiveApiService.koreVoiceName;
 
   String? _currentChatId;
   List<Map<String, dynamic>> _chatHistory = [];
@@ -161,7 +166,10 @@ class _BeatriceHomeState extends State<BeatriceHome>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _repo = SupabaseRepository(Supabase.instance.client);
-    _gemini = GeminiService(const String.fromEnvironment('GEMINI_API_KEY'));
+    _gemini = GeminiService(
+      _geminiKey,
+      apiKeyFallback: _geminiFallbackKey,
+    );
     _ollama = OllamaService(baseUrl: _ollamaBaseUrl);
     _openCode = OpenCodeService(baseUrl: _openCodeUrl);
     _flux = FluxService(const String.fromEnvironment('HF_TOKEN'));
@@ -246,10 +254,12 @@ class _BeatriceHomeState extends State<BeatriceHome>
       _ollamaBaseUrl = settings['ollamaBaseUrl']!;
       _ollamaCloudApiKey = cloudKey;
       _geminiPlannerApiKey = geminiPlannerKey;
-      _groqPlannerApiKey = groqPlannerKey;
+      _groqPlannerApiKey = groqPlannerKey.isNotEmpty ? groqPlannerKey : _groqKey;
       _geminiPlannerModel = prefs.getString('eburon_geminiPlannerModel') ?? '';
       _groqPlannerModel = prefs.getString('eburon_groqPlannerModel') ?? '';
       _taskMode = prefs.getBool('eburon_chatTaskMode') ?? false;
+      _voiceName = prefs.getString('eburon_voiceName') ??
+          LiveApiService.koreVoiceName;
     });
     _geminiPlanner.configure(apiKey: _geminiPlannerApiKey);
     _groqPlanner.configure(apiKey: _groqPlannerApiKey);
@@ -530,6 +540,12 @@ class _BeatriceHomeState extends State<BeatriceHome>
     _configureSelectedOllama();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('eburon_ollamaProvider', provider);
+  }
+
+  Future<void> _changeVoice(String voiceApiName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('eburon_voiceName', voiceApiName);
+    if (mounted) setState(() => _voiceName = voiceApiName);
   }
 
   Future<void> _changeOllamaCloudKey(String key) async {
@@ -1065,7 +1081,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
         apiKey: _gemini.apiKey,
         model: GeminiService.models['live']!,
         systemInstruction: systemInstruction,
-        voiceName: LiveApiService.koreVoiceName,
+        voiceName: _voiceName,
       );
       unawaited(_audioService.prepareLivePlayback());
 
@@ -2525,6 +2541,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
                         responseStyle: _responseStyle,
                         language: _language,
                         theme: _theme,
+                        voiceName: _voiceName,
                         ollamaModel: _ollamaModel,
                         ollamaBaseUrl: _ollamaBaseUrl,
                         ollamaProvider: _ollamaProvider,
@@ -2543,6 +2560,7 @@ class _BeatriceHomeState extends State<BeatriceHome>
                         onLanguageChanged: (v) => setState(
                           () => _language = LanguagePreferences.normalize(v),
                         ),
+                        onVoiceChanged: (v) => _changeVoice(v),
                         onOllamaModelChanged: (v) =>
                             unawaited(_changeSelectedOllamaModel(v)),
                         onOllamaBaseUrlChanged: (v) {
