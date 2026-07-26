@@ -12,9 +12,8 @@ class GeminiService {
 
   GeminiService(this.apiKey, {this.apiKeyFallback = ''});
 
-  String get _currentKey => _useFallback && apiKeyFallback.isNotEmpty
-      ? apiKeyFallback
-      : apiKey;
+  String get _currentKey =>
+      _useFallback && apiKeyFallback.isNotEmpty ? apiKeyFallback : apiKey;
 
   void _rotateKey() {
     if (apiKeyFallback.isNotEmpty) {
@@ -22,8 +21,7 @@ class GeminiService {
     }
   }
 
-  bool _shouldRetry(int statusCode) =>
-      statusCode == 429 || statusCode == 403;
+  bool _shouldRetry(int statusCode) => statusCode == 429 || statusCode == 403;
 
   Uri _url(String model, String action) =>
       Uri.parse('$_baseUrl/models/$model:$action?key=$_currentKey');
@@ -57,7 +55,7 @@ class GeminiService {
     'imagePro': 'gemini-3-pro-image-preview',
     'audio': 'gemini-3-flash-preview',
     'tts': 'gemini-2.5-flash-preview-tts',
-    'live': 'gemini-3.1-flash-live-preview',
+    'live': 'gemini-live-2.5-flash-native-audio',
   };
 
   static const String voicePersonalityPrompt = BeatricePersona.voicePrompt;
@@ -184,7 +182,7 @@ class GeminiService {
     }
 
     http.StreamedResponse streamedResponse;
-    for (int attempt = 0;; attempt++) {
+    for (int attempt = 0; ; attempt++) {
       final req = http.Request('POST', _url(model, 'streamGenerateContent'));
       req.headers['Content-Type'] = 'application/json';
       req.body = jsonEncode(body);
@@ -373,10 +371,7 @@ class GeminiService {
         },
       },
     };
-    final response = await _post(
-      _url(models['tts']!, 'generateContent'),
-      body,
-    );
+    final response = await _post(_url(models['tts']!, 'generateContent'), body);
     if (response.statusCode != 200) {
       throw Exception('TTS error: ${response.statusCode}');
     }

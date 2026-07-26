@@ -91,7 +91,9 @@ void main() {
     const model = 'gemini-2.5-flash-native-audio-preview';
     expect(LiveApiService.supportsAffectiveDialog(model), isTrue);
     expect(
-      LiveApiService.supportsAffectiveDialog('gemini-3.1-flash-live-preview'),
+      LiveApiService.supportsAffectiveDialog(
+        'gemini-live-2.5-flash-native-audio',
+      ),
       isFalse,
     );
 
@@ -171,10 +173,7 @@ void main() {
         MobilePlannerProviders.byId(MobilePlannerProviders.groq).isIntegrated,
         isTrue,
       );
-      expect(
-        MobilePlannerProviders.byId('gemini').label,
-        contains('Eburon'),
-      );
+      expect(MobilePlannerProviders.byId('gemini').label, contains('Eburon'));
     },
   );
 }

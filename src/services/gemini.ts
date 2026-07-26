@@ -21,7 +21,7 @@ export const models = {
   imagePro: "gemini-3-pro-image-preview",
   audio: "gemini-3-flash-preview",
   tts: "gemini-3.1-flash-tts-preview",
-  live: "gemini-3.1-flash-live-preview",
+  live: "gemini-live-2.5-flash-native-audio",
 };
 
 const BEATRICE_VOICE_NAME = "Kore";
