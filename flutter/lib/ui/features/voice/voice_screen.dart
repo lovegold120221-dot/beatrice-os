@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:beatrice/ui/core/theme.dart';
 
+const Color _plutoPing = Color(0x4DC9956B);
+const Color _plutoRing = Color(0x33C9956B);
+const Color _plutoBorder = Color(0xFFC9956B);
+const Color _pluto = Color(0xFFC9956B);
+const Color _plutoLight = Color(0xFFE8C498);
+const Color _plutoDark = Color(0xFFA67B5B);
+
 /// Full-screen voice overlay mirroring the root app's Live API UI:
 /// animated background blobs, a status pill, a radar ping (listening),
 /// a rotating playback ring (speaking), a PCM-driven microphone meter, live
@@ -326,7 +333,7 @@ class _VoiceScreenState extends State<VoiceScreen>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0x4D34D399),
+                          color: _plutoPing,
                           width: 2,
                         ),
                       ),
@@ -340,10 +347,10 @@ class _VoiceScreenState extends State<VoiceScreen>
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0x333B82F6), width: 2),
+                border: Border.all(color: _plutoRing, width: 2),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x333B82F6),
+                    color: _plutoRing,
                     blurRadius: 30,
                     spreadRadius: 0,
                   ),
@@ -359,9 +366,9 @@ class _VoiceScreenState extends State<VoiceScreen>
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: const Border(
-                        top: BorderSide(color: AppColors.blue, width: 2),
-                        left: BorderSide(color: AppColors.blue, width: 2),
+                      border: Border(
+                        top: BorderSide(color: _plutoBorder, width: 2),
+                        left: BorderSide(color: _plutoBorder, width: 2),
                       ),
                     ),
                   ),
@@ -381,11 +388,11 @@ class _VoiceScreenState extends State<VoiceScreen>
     // Per-bar peak heights and colors, mirroring the root motion keyframes.
     const heights = [16.0, 64.0, 24.0, 80.0, 16.0];
     const colors = [
-      AppColors.blue,
-      AppColors.blueBg,
-      AppColors.blue,
-      AppColors.blueBg,
-      AppColors.blue,
+      _plutoLight,
+      _pluto,
+      _plutoLight,
+      _plutoDark,
+      _plutoLight,
     ];
     return SizedBox(
       height: 96,
@@ -406,7 +413,7 @@ class _VoiceScreenState extends State<VoiceScreen>
                 color = colors[i];
                 glow = [
                   BoxShadow(
-                    color: AppColors.blue.withValues(alpha: 0.6),
+                    color: _pluto.withValues(alpha: 0.6),
                     blurRadius: 15,
                   ),
                 ];
@@ -414,10 +421,10 @@ class _VoiceScreenState extends State<VoiceScreen>
                 const responseShape = [0.52, 0.78, 1.0, 0.72, 0.46];
                 final input = widget.micInputLevel.clamp(0.0, 1.0);
                 h = 8 + 76 * input * responseShape[i];
-                color = AppColors.emerald;
+                color = _pluto;
                 glow = [
                   BoxShadow(
-                    color: AppColors.emerald.withValues(
+                    color: _pluto.withValues(
                       alpha: 0.15 + input * 0.55,
                     ),
                     blurRadius: 6 + input * 12,

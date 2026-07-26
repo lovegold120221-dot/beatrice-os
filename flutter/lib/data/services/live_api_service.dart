@@ -158,6 +158,7 @@ SEAMLESS SECRETARY BEHAVIOR
     required String model,
     required String systemInstruction,
     String voiceName = koreVoiceName,
+    String? languageCode,
     int clientSampleRate = 16000,
     int serverSampleRate = 24000,
     bool? enableAffectiveDialog,
@@ -211,6 +212,7 @@ SEAMLESS SECRETARY BEHAVIOR
           clientSampleRate,
           serverSampleRate,
           enableAffectiveDialog: useAffectiveDialog,
+          languageCode: languageCode,
         ),
       ),
     );
@@ -241,7 +243,12 @@ SEAMLESS SECRETARY BEHAVIOR
     int clientSampleRate,
     int serverSampleRate, {
     required bool enableAffectiveDialog,
+    String? languageCode,
   }) {
+    final transcriptionConfig = <String, dynamic>{};
+    if (languageCode != null && languageCode.isNotEmpty) {
+      transcriptionConfig['languageCode'] = languageCode;
+    }
     return {
       'setup': {
         'model': 'models/$model',
@@ -272,8 +279,8 @@ SEAMLESS SECRETARY BEHAVIOR
             'functionDeclarations': [mobileTaskToolDeclaration],
           },
         ],
-        'inputAudioTranscription': {},
-        'outputAudioTranscription': {},
+        'inputAudioTranscription': transcriptionConfig,
+        'outputAudioTranscription': transcriptionConfig,
         'realtimeInputConfig': {
           'automaticActivityDetection': {
             'disabled': false,

@@ -261,6 +261,46 @@ abstract final class LanguagePreferences {
     return supportedLanguages.contains(value) ? value : defaultLanguage;
   }
 
+  static const _bcp47Map = <String, String>{
+    'English': 'en-US',
+    'Filipino': 'fil-PH',
+    'Spanish': 'es-ES',
+    'French': 'fr-FR',
+    'French (Canada)': 'fr-CA',
+    'German': 'de-DE',
+    'Italian': 'it-IT',
+    'Portuguese (Brazil)': 'pt-BR',
+    'Portuguese (Portugal)': 'pt-PT',
+    'Japanese': 'ja-JP',
+    'Korean': 'ko-KR',
+    'Chinese (Simplified)': 'zh-CN',
+    'Chinese (Traditional)': 'zh-TW',
+    'Arabic': 'ar-SA',
+    'Hindi': 'hi-IN',
+    'Russian': 'ru-RU',
+    'Dutch': 'nl-NL',
+    'Polish': 'pl-PL',
+    'Turkish': 'tr-TR',
+    'Vietnamese': 'vi-VN',
+    'Thai': 'th-TH',
+    'Indonesian': 'id-ID',
+    'Malay': 'ms-MY',
+    'Swedish': 'sv-SE',
+    'Danish': 'da-DK',
+    'Norwegian': 'nb-NO',
+    'Finnish': 'fi-FI',
+    'Czech': 'cs-CZ',
+    'Romanian': 'ro-RO',
+    'Hungarian': 'hu-HU',
+    'Greek': 'el-GR',
+    'Hebrew': 'he-IL',
+    'Ukrainian': 'uk-UA',
+    'Catalan': 'ca-ES',
+  };
+
+  static String bcp47Code(String language) =>
+      _bcp47Map[language] ?? 'en-US';
+
   static String responseInstruction(String language) {
     final selected = normalize(language);
     return '''
